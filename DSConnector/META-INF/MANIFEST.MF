@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: DB Connector
+Bundle-SymbolicName: DSConnector;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: com.ttr.db.view.Activator
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime
+Bundle-ActivationPolicy: lazy
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-ClassPath: .,
+ etc/mysql-connector-java-5.1.20-bin.jar,
+ etc/db2jcc_license_cisuz.jar,
+ etc/db2jcc.jar
+Import-Package: org.junit;version="4.12.0",
+ org.junit.runner,
+ org.junit.runners;version="4.12.0"

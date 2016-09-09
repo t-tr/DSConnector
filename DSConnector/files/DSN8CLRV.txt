@@ -1,0 +1,1132 @@
+      ***************************************************************** 00010000
+      * MODULE NAME = DSN8CLRV (DB2 SAMPLE PROGRAM)                   * 00020000
+      *                                                               * 00030000
+      * DESCRIPTIVE NAME = Display the resume of a specified employee * 00040000
+      *                                                               * 00050000
+      *                                                               * 00060000
+      *  LICENSED MATERIALS - PROPERTY OF IBM                         * 00070000
+      *  5605-DB2                                                     * 00080000
+      *  (C) COPYRIGHT 1982 2010 IBM CORP.  ALL RIGHTS RESERVED.      * 00090000
+      *                                                               * 00100000
+      *  STATUS = VERSION 10                                          * 00110000
+      *                                                               * 00120000
+      * Function:Prompts the user to choose an employee then retrieves* 00130000
+      *       the resume data for that employee from the RESUME (CLOB)* 00140000
+      *       column of the EMP_PHOTO_RESUME table into a CLOB locator* 00150000
+      *       uses LOB locator-handling functions to locate and break * 00160000
+      *       out data elements and puts them in fields for display   * 00170000
+      *       by ISPF.                                                * 00180000
+      *                                                               * 00190000
+      *   Restrictions:                                               * 00200000
+      *                                                               * 00210000
+      * Module type: COBOL program                                    * 00220000
+      * Module size: See linkedit output                              * 00230000
+      *  Attributes: Re-entrant and re-usable                         * 00240000
+      *                                                               * 00250000
+      * Entry Point: CEESTART (Language Environment entry point)      * 00260000
+      *     Purpose: See Function                                     * 00270000
+      *     Linkage: Standard MVS program invocation no parameters    * 00280000
+      *                                                               * 00290000
+      * Normal Exit: Return Code = 0000                               * 00300000
+      *              - Message: none                                  * 00310000
+      *                                                               * 00320000
+      *  Error Exit: Return Code = 0008                               * 00330000
+      *              - Message: *** ERROR: DSN8CLRV DB2 Sample Program* 00340000
+      *                                 Unexpected SQLCODE encountered* 00350000
+      *                                    at location xxx            * 00360000
+      *                                    Error detailed below       * 00370000
+      *                                    Processing terminated      * 00380000
+      *                               (DSNTIAR-formatted message here)* 00390000
+      *                                                               * 00400000
+      *              - Message: *** ERROR: DSN8CLRV DB2 Sample Program* 00410000
+      *                                No entry in the Employee Photo/* 00420000
+      *                                Resume table for employee with * 00430000
+      *                                empno = xxxxxx                 * 00440000
+      *                                Processing terminated          * 00450000
+      *                                                               * 00460000
+      *              - Message: *** ERROR: DSN8CLRV DB2 Sample Program* 00470000
+      *                                No resume data exists in       * 00480000
+      *                                the Employee Photo/Resume table* 00490000
+      *                                for the employee with empno =  * 00500000
+      *                                xxxxxx.                        * 00510000
+      *                                Processing terminated          * 00520000
+      *                                                               * 00530000
+      *                                                               * 00540000
+      *    External References:                                       * 00550000
+      *             - Routines/Services: DSNTIAR ISPF                 * 00560000
+      *             - Data areas       : DSNTIAR error_message        * 00570000
+      *             - Control blocks   : None                         * 00580000
+      *                                                               * 00590000
+      *                                                               * 00600000
+      *  Pseudocode:                                                  * 00610000
+      *   DSN8CLRV:                                                   * 00620000
+      *   - Call B10000-INITISPFVARS to establish ISPF variable       * 00630000
+      *     sharing                                                   * 00640000
+      *   - Do until the user indicates termination                   * 00650000
+      *     - Call B10010-CLEARISPFVARS to reset the ISPF shared      * 00660000
+      *       variables                                               * 00670000
+      *     - Call C10000-GETEMPLNUM to request an employee id        * 00680000
+      *     - Call C10010-GETEMPLRESUME to retrieve the resume        * 00690000
+      *     - Call C10010-FORMATEMPLRESUME to populate the ISPF       * 00700000
+      *       display panel                                           * 00710000
+      *     - Call D10030-SHOWEMPLRESUME to display the resume        * 00720000
+      *   - Call D20000-FREEISPFVARS to terminate ISPF variable       * 00730000
+      *     sharing                                                   * 00740000
+      *   End DSN8CLRV                                                * 00750000
+      *                                                               * 00760000
+      *   B10000-INITISPFVARS:                                        * 00770000
+      *   - Establish ISPF variable sharing                           * 00780000
+      *   End B10000-INITISPFVARS                                     * 00790000
+      *                                                               * 00800000
+      *   B10010-CLEARISPFVARS:                                       * 00810000
+      *   - Set ISPF vars to blank if character type or 0 if numeric  * 00820000
+      *   End B10010-CLEARISPFVARS                                    * 00830000
+      *                                                               * 00840000
+      *   C10000-GETEMPLNUM:                                          * 00850000
+      *   -prompt user to select an employee whose resume is to be    * 00860000
+      *     viewed                                                    * 00870000
+      *   End C10000-GETEMPLNUM                                       * 00880000
+      *                                                               * 00890000
+      *   C10010-GETEMPLRESUME:                                       * 00900000
+      *   - Fetch the specified employee's resume from DB2 using a    * 00910000
+      *     CLOB locator                                              * 00920000
+      *   End C10010-GETEMPLRESUME                                    * 00930000
+      *                                                               * 00940000
+      *   C10010-FORMATEMPLRESUME:                                    * 00950000
+      *   - call getPersonalData to extract personal data from        * 00960000
+      *     the resume                                                * 00970000
+      *   - call getDepartmentData to extract department data         * 00980000
+      *   - call getEducationData to extract education data           * 00990000
+      *   - call getWorkHistoryData to extract work history data      * 01000000
+      *   End C10010-FORMATEMPLRESUME                                 * 01010000
+      *                                                               * 01020000
+      *   D10030-SHOWEMPLRESUME:                                      * 01030000
+      *   - Display the ISPF panel with specified employee's resume   * 01040000
+      *   End D10030-SHOWEMPLRESUME                                   * 01050000
+      *                                                               * 01060000
+      *   D20000-FREEISPFVARS:                                        * 01070000
+      *   - Terminate variable sharing with ISPF                      * 01080000
+      *   End D20000-FREEISPFVARS                                     * 01090000
+      *                                                               * 01100000
+      *   D10000-GETPERSONALDATA:                                     * 01110000
+      *   - Parse the employee's name address home telephone no.      * 01120000
+      *     birthdate sex marital status height and weight into ISPF  * 01130000
+      *     display variables                                         * 01140000
+      *   End D10000-GETPERSONALDATA                                  * 01150000
+      *                                                               * 01160000
+      *   D10010-GETDEPARTMENTDATA:                                   * 01170000
+      *   - Parse the employee's department number manager job        * 01180000
+      *     position work telephone no. and hire date into ISPF       * 01190000
+      *     display variables                                         * 01200000
+      *   End D10010-GETDEPARTMENTDATA                                * 01210000
+      *                                                               * 01220000
+      *   D10020-GETEDUCATIONDATA:                                    * 01230000
+      *   - Parse the employee's degree dates descriptions and schools* 01240000
+      *     into ISPF display variables.                              * 01250000
+      *   End D10020-GETEDUCATIONDATA                                 * 01260000
+      *                                                               * 01270000
+      *   D10030-GETWORKHISTORYDATA:                                  * 01280000
+      *   - Parse the employee's job dates titles and descriptions    * 01290000
+      *     into ISPF display variables.                              * 01300000
+      *   End D10030-GETWORKHISTORYDATA                               * 01310000
+      *                                                               * 01320000
+      *                                                               * 01330000
+      * D31100-CHECK-SQLCODE:                                         * 01340000
+      *  - Verify that the prior SQL call completed successfully      * 01350000
+      * End D31100-CHECK-SQLCODE                                      * 01360000
+      *                                                             *   01370000
+      * E31110-DETAIL-SQL-ERROR:                                      * 01380000
+      *  - call DSNTIAR to format the unexpected SQLCODE.             * 01390000
+      * End E31110-DETAIL-SQL-ERROR                                   * 01400000
+      *                                                               * 01410000
+      * F31111-PRINT-SQL-ERROR-MSG:                                   * 01420000
+      *  - Print the message text                                     * 01430000
+      * End F31111-PRINT-SQL-ERROR-MSG                                * 01440000
+      *                                                               * 01450000
+      ***************************************************************** 01460000
+      * Assumptions:                                                  * 01470000
+      * (1) Each employee has exactly 2 entries under 'Education'     * 01480000
+      * (2) Each employee has exactly 3 entries under 'Work History'  * 01490000
+      * (3) Each job description consists of a single sentence and    * 01500000
+      *     that sentence ends with a period and that period is the   * 01510000
+      *     only period in the sentence.                              * 01520000
+      *                                                               * 01530000
+      ***************************************************************** 01540000
+       IDENTIFICATION DIVISION.                                         01550000
+       PROGRAM-ID. DSN8CLRV.                                            01560000
+                                                                        01570000
+       ENVIRONMENT DIVISION.                                            01580000
+       CONFIGURATION SECTION.                                           01590000
+       SOURCE-COMPUTER.  IBM-370.                                       01600000
+       OBJECT-COMPUTER.  IBM-370.                                       01610000
+                                                                        01620000
+                                                                        01630000
+       DATA DIVISION.                                                   01640000
+                                                                        01650000
+                                                                        01660000
+       WORKING-STORAGE SECTION.                                         01670000
+                                                                        01680000
+      *************************** ISPF Syntax **************************01690000
+       01  CHAR     PIC X(8)   VALUE 'CHAR    '.                        01700000
+       01  VDISPLAY PIC X(8)   VALUE 'DISPLAY '.                        01710000
+       01  VDEFINE  PIC X(8)   VALUE 'VDEFINE '.                        01720000
+       01  VGET     PIC X(8)   VALUE 'VGET    '.                        01730000
+       01  VRESET   PIC X(8)   VALUE 'VRESET  '.                        01740000
+       01  DB2IO-COMMAND    PIC X(35).                                  01750000
+       01  CHARCOUNT    PIC 9(5) VALUE ZEROS.                           01760000
+       01  BEGFIELD     PIC 9(5).                                       01770000
+       01  ENDFIELD     PIC 9(5).                                       01780000
+       01  KEEPVIEWING  PIC XXX.                                        01790000
+       01  DSN8SSE      PIC X(8)  VALUE 'DSN8SSE '.                     01800000
+       01  DSN8SSR      PIC X(8)  VALUE 'DSN8SSR '.                     01810000
+       01  EMPLNAME       PIC X(8)  VALUE 'D8EMNAME'.                   01820000
+       01  EMPLNUM        PIC X(8)  VALUE 'D8EMNUMB'.                   01830000
+       01  EMPLADDR1      PIC X(8)  VALUE 'D8EMADR1'.                   01840000
+       01  EMPLDEPT       PIC X(8)  VALUE 'D8EMDEPT'.                   01850000
+       01  EMPLADDR2      PIC X(8)  VALUE 'D8EMADR2'.                   01860000
+       01  EMPLMANAGER    PIC X(8)  VALUE 'D8MGRNAM'.                   01870000
+       01  EMPLADDR3      PIC X(8)  VALUE 'D8EMADR3'.                   01880000
+       01  EMPLPOSITION   PIC X(8)  VALUE 'D8EMPOSN'.                   01890000
+       01  BIRTHDATE      PIC X(8)  VALUE 'D8EMBORN'.                   01900000
+       01  EMPLPHONE      PIC X(8)  VALUE 'D8EMPHON'.                   01910000
+       01  EMPLOYEESEX    PIC X(8)  VALUE 'D8EMSEX '.                   01920000
+       01  EMPLHIREDATE   PIC X(8)  VALUE 'D8EMHIRE'.                   01930000
+       01  EMPLHEIGHT     PIC X(8)  VALUE 'D8EMHGT '.                   01940000
+       01  EMPLWEIGHT     PIC X(8)  VALUE 'D8EMWGT '.                   01950000
+       01  MARITALSTAT    PIC X(8)  VALUE 'D8EMPMST'.                   01960000
+       01  EMPLYEAR1      PIC X(8)  VALUE 'D8EMEDY1'.                   01970000
+       01  EMPLDATE1      PIC X(8)  VALUE 'D8EMEDD1'.                   01980000
+       01  EMPLYEAR2      PIC X(8)  VALUE 'D8EMEDY2'.                   01990000
+       01  EMPLDATE2      PIC X(8)  VALUE 'D8EMEDD2'.                   02000000
+       01  EMPLINST1      PIC X(8)  VALUE 'D8EMEDI1'.                   02010000
+       01  EMPLINST2      PIC X(8)  VALUE 'D8EMEDI2'.                   02020000
+       01  EMPLJOBDATE1   PIC X(8)  VALUE 'D8EMWHD1'.                   02030000
+       01  EMPLJOBDESC1   PIC X(8)  VALUE 'D8EMWHJ1'.                   02040000
+       01  EMPLTITLE1     PIC X(8)  VALUE 'D8EMWHT1'.                   02050000
+       01  EMPLJOBDATE2   PIC X(8)  VALUE 'D8EMWHD2'.                   02060000
+       01  EMPLJOBDESC2   PIC X(8)  VALUE 'D8EMWHJ2'.                   02070000
+       01  EMPLTITLE2     PIC X(8)  VALUE 'D8EMWHT2'.                   02080000
+       01  EMPLJOBDATE3   PIC X(8)  VALUE 'D8EMWHD3'.                   02090000
+       01  EMPLJOBDESC3   PIC X(8)  VALUE 'D8EMWHJ3'.                   02100000
+       01  EMPLTITLE3     PIC X(8)  VALUE 'D8EMWHT3'.                   02110000
+                                                                        02120000
+       01  TWENTYFOUR     PIC 9(06) COMP VALUE 24.                      02130000
+       01  SIX            PIC 9(06) COMP VALUE 06.                      02140000
+       01  FOUR           PIC 9(06) COMP VALUE 04.                      02150000
+       01  FOURTEEN       PIC 9(06) COMP VALUE 14.                      02160000
+       01  TWENTYONE      PIC 9(06) COMP VALUE 21.                      02170000
+       01  EIGTHTEEN      PIC 9(06) COMP VALUE 18.                      02180000
+       01  TEN            PIC 9(06) COMP VALUE 10.                      02190000
+       01  FIVE           PIC 9(06) COMP VALUE 05.                      02200000
+       01  EIGHT          PIC 9(06) COMP VALUE 08.                      02210000
+       01  THIRTYFOUR     PIC 9(06) COMP VALUE 34.                      02220000
+       01  SIXTEEN        PIC 9(06) COMP VALUE 16.                      02230000
+       01  SIXTYTWO       PIC 9(06) COMP VALUE 62.                      02240000
+                                                                        02250000
+      ***************************************************************** 02260000
+      * Job status indicator                                            02270000
+      ***************************************************************** 02280000
+       01 STATUS1              PIC X(4).                                02290000
+          88 NOT-OK  VALUE 'BAD '.                                      02300000
+          88 OK      VALUE 'GOOD'.                                      02310000
+                                                                        02320000
+      ***************************************************************** 02330000
+      * Buffer for receiving SQL error messages                         02340000
+      ***************************************************************** 02350000
+       01 ERROR-MESSAGE.                                                02360000
+          02  ERROR-LEN            PIC S9(4)   COMP VALUE +960.         02370000
+          02  ERROR-TEXT           PIC X(120)  OCCURS 10 TIMES          02380000
+                                                INDEXED BY ERROR-INDEX. 02390000
+       77 ERROR-TEXT-LEN           PIC S9(9)   COMP VALUE +120.         02400000
+                                                                        02410000
+                                                                        02420000
+      ********************** ISPF Shared Variables *********************02430000
+       01   D8EMNAME    PIC   X(24).                                    02440000
+       01   D8EMNUMB    PIC   X(6).                                     02450000
+       01   D8EMADR1    PIC   X(24).                                    02460000
+       01   D8EMDEPT    PIC   X(4).                                     02470000
+       01   D8EMADR2    PIC   X(24).                                    02480000
+       01   D8MGRNAM    PIC   X(21).                                    02490000
+       01   D8EMADR3    PIC   X(14).                                    02500000
+       01   D8EMPOSN    PIC   X(21).                                    02510000
+       01   D8EMBORN    PIC   X(18).                                    02520000
+       01   D8EMPHON    PIC   X(14).                                    02530000
+       01   D8EMSEX     PIC   X(6).                                     02540000
+       01   D8EMHIRE    PIC   X(10).                                    02550000
+       01   D8EMHGT     PIC   X(5).                                     02560000
+       01   D8EMWGT     PIC   X(8).                                     02570000
+       01   D8EMPMST    PIC   X(8).                                     02580000
+       01   D8EMEDY1    PIC   X(4).                                     02590000
+       01   D8EMEDD1    PIC   X(34).                                    02600000
+       01   D8EMEDY2    PIC   X(4).                                     02610000
+       01   D8EMEDD2    PIC   X(34).                                    02620000
+       01   D8EMEDI1    PIC   X(34).                                    02630000
+       01   D8EMEDI2    PIC   X(34).                                    02640000
+       01   D8EMWHD1    PIC   X(16).                                    02650000
+       01   D8EMWHJ1    PIC   X(62).                                    02660000
+       01   SUB1-D8EMWHJ1 PIC  X(62).                                   02670000
+       01   SUB2-D8EMWHJ1 PIC  X(20).                                   02680000
+       01   D8EMWHT1    PIC   X(62).                                    02690000
+       01   D8EMWHD2    PIC   X(16).                                    02700000
+       01   D8EMWHJ2    PIC   X(62).                                    02710000
+       01   SUB1-D8EMWHJ2 PIC  X(62).                                   02720000
+       01   SUB2-D8EMWHJ2 PIC  X(20).                                   02730000
+       01   D8EMWHT2    PIC   X(62).                                    02740000
+       01   D8EMWHD3    PIC   X(16).                                    02750000
+       01   D8EMWHJ3    PIC   X(62).                                    02760000
+       01   SUB1-D8EMWHJ3 PIC  X(62).                                   02770000
+       01   SUB2-D8EMWHJ3 PIC  X(20).                                   02780000
+       01   D8EMWHT3    PIC   X(62).                                    02790000
+                                                                        02800000
+                                                                        02810000
+                                                                        02820000
+      **************************** DB2 TABLES **************************02830000
+            EXEC SQL DECLARE  EMP_PHOTO_RESUME  TABLE                   02840000
+               (        EMPNO  CHAR(06)     NOT NULL,                   02850000
+                        EMP_ROWID  ROWID,                               02860000
+                        PSEG_PHOTO  BLOB( 500K ),                       02870000
+                        BMP_PHOTO  BLOB( 100K ),                        02880000
+                        RESUME  CLOB(   5K )         )                  02890000
+            END-EXEC.                                                   02900000
+                                                                        02910000
+                                                                        02920000
+      ********** DB2 HOST AND NULL INDICATOR VARIABLES ***************  02930000
+           EXEC SQL BEGIN DECLARE SECTION END-EXEC.                     02940000
+       77  SQLCODE                PIC S9(9) COMP-4.                     02950000
+       77  SQLSTATE               PIC X(5).                             02960000
+       01  HVEMPNO     PIC X(6).                                        02970000
+       01  BEGSECTION  PIC S9(4) COMP-4.                                02980000
+       01  ENDSECTION  PIC S9(4) COMP-4.                                02990000
+       01  HVRESUME  USAGE IS SQL TYPE IS CLOB(5K).                     03000000
+       01  NIRESUME  PIC S9(4) COMP-4 VALUE  0.                         03010000
+                                                                        03020000
+                                                                        03030000
+      **************** DB2 LOB LOCATOR VARIABLES *********************  03040000
+       01  CLRESUME   USAGE IS SQL TYPE IS CLOB-LOCATOR.                03050000
+           EXEC SQL END DECLARE SECTION END-EXEC.                       03060000
+                                                                        03070000
+                                                                        03080000
+       PROCEDURE DIVISION.                                              03090000
+       A10000-LOBEXAMPLE.                                               03100000
+                                                                        03110000
+            MOVE 'GOOD' TO STATUS1.                                     03120000
+            MOVE "YES" TO KEEPVIEWING.                                  03130000
+            PERFORM B10000-INITISPFVARS.                                03140000
+                                                                        03150000
+            PERFORM UNTIL KEEPVIEWING = "NO"                            03160000
+                                                                        03170000
+               PERFORM B10010-CLEARISPFVARS                             03180000
+                                                                        03190000
+               PERFORM C10000-GETEMPLNUM                                03200000
+                                                                        03210000
+               IF OK AND KEEPVIEWING = "YES"                            03220000
+                  PERFORM C10010-GETEMPLRESUME                          03230000
+                                                                        03240000
+                  IF OK                                                 03250000
+                     PERFORM C10010-FORMATEMPLRESUME                    03260000
+                  END-IF                                                03270000
+                                                                        03280000
+                  IF OK                                                 03290000
+                     PERFORM D10030-SHOWEMPLRESUME                      03300000
+                  ELSE                                                  03310000
+                     MOVE "NO" TO KEEPVIEWING                           03320000
+                  END-IF                                                03330000
+               END-IF                                                   03340000
+                                                                        03350000
+            END-PERFORM                                                 03360000
+                                                                        03370000
+      **********************************************************        03380000
+      * Terminate variable sharing with ISPF                   *        03390000
+      **********************************************************        03400000
+            PERFORM D20000-FREEISPFVARS.                                03410000
+                                                                        03420000
+            STOP RUN.                                                   03430000
+                                                                        03440000
+       B10000-INITISPFVARS.                                             03450000
+      *************************************************************     03460000
+      * Called by the main routine. Establishes variable sharing  *     03470000
+      * between ISPF and this program.                            *     03480000
+      *************************************************************     03490000
+            CALL 'ISPLINK' USING VDEFINE, EMPLNAME, D8EMNAME, CHAR,     03500000
+                            TWENTYFOUR.                                 03510000
+            CALL 'ISPLINK' USING VDEFINE, EMPLNUM, D8EMNUMB, CHAR,      03520000
+                            SIX.                                        03530000
+            CALL 'ISPLINK' USING VDEFINE, EMPLADDR1, D8EMADR1, CHAR,    03540000
+                            TWENTYFOUR.                                 03550000
+            CALL 'ISPLINK' USING VDEFINE, EMPLDEPT, D8EMDEPT, CHAR,     03560000
+                            FOUR.                                       03570000
+            CALL 'ISPLINK' USING VDEFINE, EMPLADDR2, D8EMADR2, CHAR,    03580000
+                            TWENTYFOUR.                                 03590000
+            CALL 'ISPLINK' USING VDEFINE, EMPLMANAGER, D8MGRNAM, CHAR,  03600000
+                            TWENTYONE.                                  03610000
+            CALL 'ISPLINK' USING VDEFINE, EMPLADDR3, D8EMADR3, CHAR,    03620000
+                            FOURTEEN.                                   03630000
+            CALL 'ISPLINK' USING VDEFINE, EMPLPOSITION, D8EMPOSN, CHAR, 03640000
+                            TWENTYONE.                                  03650000
+            CALL 'ISPLINK' USING VDEFINE, BIRTHDATE, D8EMBORN, CHAR,    03660000
+                            EIGTHTEEN.                                  03670000
+            CALL 'ISPLINK' USING VDEFINE, EMPLPHONE, D8EMPHON, CHAR,    03680000
+                            FOURTEEN.                                   03690000
+            CALL 'ISPLINK' USING VDEFINE, EMPLOYEESEX, D8EMSEX, CHAR,   03700000
+                            SIX.                                        03710000
+            CALL 'ISPLINK' USING VDEFINE, EMPLHIREDATE, D8EMHIRE, CHAR, 03720000
+                            TEN.                                        03730000
+            CALL 'ISPLINK' USING VDEFINE, EMPLHEIGHT, D8EMHGT, CHAR,    03740000
+                            FIVE.                                       03750000
+            CALL 'ISPLINK' USING VDEFINE, EMPLWEIGHT, D8EMWGT, CHAR,    03760000
+                            EIGHT.                                      03770000
+            CALL 'ISPLINK' USING VDEFINE, MARITALSTAT, D8EMPMST, CHAR,  03780000
+                            EIGHT.                                      03790000
+            CALL 'ISPLINK' USING VDEFINE, EMPLYEAR1, D8EMEDY1, CHAR,    03800000
+                            FOUR.                                       03810000
+            CALL 'ISPLINK' USING VDEFINE, EMPLDATE1, D8EMEDD1, CHAR,    03820000
+                            THIRTYFOUR.                                 03830000
+            CALL 'ISPLINK' USING VDEFINE, EMPLYEAR2, D8EMEDY2, CHAR,    03840000
+                            FOUR.                                       03850000
+            CALL 'ISPLINK' USING VDEFINE, EMPLDATE2, D8EMEDD2, CHAR,    03860000
+                            THIRTYFOUR.                                 03870000
+            CALL 'ISPLINK' USING VDEFINE, EMPLINST1, D8EMEDI1, CHAR,    03880000
+                            THIRTYFOUR.                                 03890000
+            CALL 'ISPLINK' USING VDEFINE, EMPLINST2, D8EMEDI2, CHAR,    03900000
+                            THIRTYFOUR.                                 03910000
+            CALL 'ISPLINK' USING VDEFINE, EMPLJOBDATE1, D8EMWHD1, CHAR, 03920000
+                            SIXTEEN.                                    03930000
+            CALL 'ISPLINK' USING VDEFINE, EMPLJOBDESC1, D8EMWHJ1, CHAR, 03940000
+                            SIXTYTWO.                                   03950000
+            CALL 'ISPLINK' USING VDEFINE, EMPLTITLE1, D8EMWHT1, CHAR,   03960000
+                            SIXTYTWO.                                   03970000
+            CALL 'ISPLINK' USING VDEFINE, EMPLJOBDATE2, D8EMWHD2, CHAR, 03980000
+                            SIXTEEN.                                    03990000
+            CALL 'ISPLINK' USING VDEFINE, EMPLJOBDESC2, D8EMWHJ2, CHAR, 04000000
+                            SIXTYTWO.                                   04010000
+            CALL 'ISPLINK' USING VDEFINE, EMPLTITLE2, D8EMWHT2, CHAR,   04020000
+                            SIXTYTWO.                                   04030000
+            CALL 'ISPLINK' USING VDEFINE, EMPLJOBDATE3, D8EMWHD3, CHAR, 04040000
+                            SIXTEEN.                                    04050000
+            CALL 'ISPLINK' USING VDEFINE, EMPLJOBDESC3, D8EMWHJ3, CHAR, 04060000
+                            SIXTYTWO.                                   04070000
+            CALL 'ISPLINK' USING VDEFINE, EMPLTITLE3, D8EMWHT3, CHAR,   04080000
+                            SIXTYTWO.                                   04090000
+      ***********************END OF ISPFINITVARS******************      04100000
+                                                                        04110000
+       B10010-CLEARISPFVARS.                                            04120000
+      ******************************************************************04130000
+      * Called by the main routine. Blanks out the ISPF shared variables04140000
+      ******************************************************************04150000
+            MOVE SPACES TO D8EMNAME.                                    04160000
+            MOVE SPACES TO D8EMNUMB.                                    04170000
+            MOVE SPACES TO D8EMADR1.                                    04180000
+            MOVE SPACES TO D8EMDEPT.                                    04190000
+            MOVE SPACES TO D8EMADR2.                                    04200000
+            MOVE SPACES TO D8MGRNAM.                                    04210000
+            MOVE SPACES TO D8EMADR3.                                    04220000
+            MOVE SPACES TO D8EMPOSN.                                    04230000
+            MOVE SPACES TO D8EMBORN.                                    04240000
+            MOVE SPACES TO D8EMPHON.                                    04250000
+            MOVE SPACES TO D8EMSEX.                                     04260000
+            MOVE SPACES TO D8EMHIRE.                                    04270000
+            MOVE SPACES TO D8EMHGT.                                     04280000
+            MOVE SPACES TO D8EMWGT.                                     04290000
+            MOVE SPACES TO D8EMPMST.                                    04300000
+            MOVE SPACES TO D8EMEDY1.                                    04310000
+            MOVE SPACES TO D8EMEDD1.                                    04320000
+            MOVE SPACES TO D8EMEDY2.                                    04330000
+            MOVE SPACES TO D8EMEDD2.                                    04340000
+            MOVE SPACES TO D8EMEDI1.                                    04350000
+            MOVE SPACES TO D8EMEDI2.                                    04360000
+            MOVE SPACES TO D8EMWHD1.                                    04370000
+            MOVE SPACES TO D8EMWHJ1.                                    04380000
+            MOVE SPACES TO D8EMWHT1.                                    04390000
+            MOVE SPACES TO D8EMWHD2.                                    04400000
+            MOVE SPACES TO D8EMWHJ2.                                    04410000
+            MOVE SPACES TO D8EMWHT2.                                    04420000
+            MOVE SPACES TO D8EMWHD3.                                    04430000
+            MOVE SPACES TO D8EMWHJ3.                                    04440000
+            MOVE SPACES TO D8EMWHT3.                                    04450000
+      ***********************END OF CLEARISPFVARS******************     04460000
+                                                                        04470000
+                                                                        04480000
+                                                                        04490000
+       C10000-GETEMPLNUM.                                               04500000
+      **********************************************************        04510000
+      * Called by the main routine.  Displays an ISPF panels to*        04520000
+      * prompt the user to select an employee whose resume is  *        04530000
+      * to be displayed.                                       *        04540000
+      **********************************************************        04550000
+                                                                        04560000
+      ******DISPLAY THE PROMPT PANEL****************************        04570000
+            CALL 'ISPLINK' USING VDISPLAY DSN8SSE.                      04580000
+            IF RETURN-CODE NOT = 0                                      04590000
+               MOVE 'NO' TO KEEPVIEWING.                                04600000
+                                                                        04610000
+            MOVE D8EMNUMB TO HVEMPNO.                                   04620000
+                                                                        04630000
+       C10010-GETEMPLRESUME.                                            04640000
+      **********************************************************        04650000
+      * CALLED BY THE MAIN ROUTINE. EXTRACTS A SPECIFIED       *        04660000
+      * EMPLOYEE'SRESUME DATA FROM A CLOB COLUMN IN THE SAMPLE *        04670000
+      * EMP_PHOTO_RESUME TABLE TO A CLOB LOCATOR.              *        04680000
+      **********************************************************        04690000
+                                                                        04700000
+      **** ESTABLISH A CLOB LOCATOR ON THE RESUME OF THE  ******        04710000
+      **** SPECIFIED EMPNO                                ******        04720000
+                                                                        04730000
+            EXEC SQL SELECT  RESUME                                     04740000
+                     INTO :CLRESUME                                     04750000
+                     FROM EMP_PHOTO_RESUME                              04760000
+                     WHERE EMPNO = :HVEMPNO                             04770000
+            END-EXEC.                                                   04780000
+                                                                        04790000
+            IF SQLCODE = 100                                            04800000
+               MOVE 'BAD' TO STATUS1                                    04810000
+               DISPLAY '**************************************'         04820000
+               DISPLAY '*** ERROR: DSN8CLRV DB2 SAMPLE PROGRAM'         04830000
+               DISPLAY '***    NO ENTRY IN THE EMPLOYEE PHOTO/RESUME'   04840000
+               DISPLAY '***     TABLE FOR EMPLOYEE WITH EMPNO ' HVEMPNO 04850000
+               DISPLAY '***        PROCESSING TERMINATED'               04860000
+               DISPLAY '***************************************'        04870000
+            ELSE                                                        04880000
+               IF SQLCODE = 305                                         04890000
+                  MOVE 'BAD' TO STATUS1                                 04900000
+                  DISPLAY '************************************'        04910000
+                  DISPLAY '*** ERROR: DSN8CLRV DB2 SAMPLE PROGRAM'      04920000
+                  DISPLAY '***        NO RESUME DATA EXISTS IN THE'     04930000
+                  DISPLAY '***   EMPLOYEE PHOTO/RESUME TABLE FOR THE'   04940000
+                  DISPLAY '***      EMPLOYEE WITH EMPNO = ' HVEMPNO     04950000
+                  DISPLAY '***        PROCESSING TERMINATED'            04960000
+                  DISPLAY '************************************'        04970000
+               ELSE                                                     04980000
+                  IF SQLCODE NOT = 0                                    04990000
+                     MOVE 'BAD' TO STATUS1                              05000000
+                     MOVE 'GETEMPLRESUME @ SELECT' TO DB2IO-COMMAND     05010000
+                     PERFORM D31100-CHECK-SQLCODE                       05020000
+                  END-IF                                                05030000
+               END-IF                                                   05040000
+            END-IF.                                                     05050000
+                                                                        05060000
+       C10010-FORMATEMPLRESUME.                                         05070000
+      ****************************************************************  05080000
+      * Called by the main routine.  Calls routines to parse out the *  05090000
+      * contents of the resume into ISPF-shared variables.           *  05100000
+      ****************************************************************  05110000
+                                                                        05120000
+      ***************************************************************   05130000
+      *Get employee's name, address, and other personal information *   05140000
+      ***************************************************************   05150000
+            PERFORM D10000-GETPERSONALDATA.                             05160000
+                                                                        05170000
+            IF OK                                                       05180000
+               PERFORM D10010-GETDEPARTMENTDATA.                        05190000
+            IF OK                                                       05200000
+               PERFORM D10020-GETEDUCATIONDATA.                         05210000
+            IF OK                                                       05220000
+               PERFORM D10030-GETWORKHISTORYDATA.                       05230000
+                                                                        05240000
+      ******************************************************************05250000
+      * Free the CLOB locator for the resume                            05260000
+      ******************************************************************05270000
+            IF OK                                                       05280000
+               EXEC SQL FREE LOCATOR :CLRESUME END-EXEC                 05290000
+               IF SQLCODE NOT = 0                                       05300000
+                  MOVE 'BAD' TO STATUS1                                 05310000
+                  MOVE 'FORMATEMPLRESUME @ FREE LOCATOR'                05320000
+                          TO DB2IO-COMMAND                              05330000
+                  PERFORM D31100-CHECK-SQLCODE                          05340000
+               END-IF                                                   05350000
+            END-IF.                                                     05360000
+                                                                        05370000
+                                                                        05380000
+                                                                        05390000
+       D10000-GETPERSONALDATA.                                          05400000
+      ******************************************************************05410000
+      * CALLED BY THE FORMATEMPLRESUME ROUTINE TO PARSE THE CLOB LOCATOR05420000
+      * DATA FOR THE EMPLOYEE'S NAME, ADDRESS, HOME TELEPHONE NO., BIRTH05430000
+      * DATE, SEX, MARITAL STATUS, HEIGHT, AND WEIGHT INTO ISPF VARIABLE05440000
+      ******************************************************************05450000
+                                                                        05460000
+      ******************************************************************05470000
+      * EXTRACT THE PERSONAL DATA SECTION FROM THE CLOB LOCATOR         05480000
+      ******************************************************************05490000
+            MOVE SPACES TO HVRESUME-DATA.                               05500000
+            EXEC SQL SET :BEGSECTION =                                  05510000
+                     POSSTR( :CLRESUME, '    Resume:  ' )               05520000
+            END-EXEC.                                                   05530000
+                                                                        05540000
+            IF SQLCODE NOT = 0                                          05550000
+               MOVE 'BAD' TO STATUS1                                    05560000
+               MOVE 'GETPERSONALDATA @ POSSTR 1' TO DB2IO-COMMAND       05570000
+               PERFORM D31100-CHECK-SQLCODE                             05580000
+            END-IF                                                      05590000
+                                                                        05600000
+            IF OK                                                       05610000
+               EXEC SQL SET :ENDSECTION                                 05620000
+                = POSSTR( :CLRESUME, '    Department Information   ' )  05630000
+               END-EXEC                                                 05640000
+               IF SQLCODE NOT = 0                                       05650000
+                 MOVE 'BAD' TO STATUS1                                  05660000
+                 MOVE 'GETPERSONALDATA @ POSSTR 2' TO DB2IO-COMMAND     05670000
+                 PERFORM D31100-CHECK-SQLCODE                           05680000
+               END-IF                                                   05690000
+            END-IF                                                      05700000
+                                                                        05710000
+            IF OK                                                       05720000
+               EXEC SQL SET :HVRESUME                                   05730000
+                 = SUBSTR(:CLRESUME,:BEGSECTION,                        05740000
+                                  :ENDSECTION - :BEGSECTION )           05750000
+               END-EXEC                                                 05760000
+               IF SQLCODE NOT = 0                                       05770000
+                  MOVE 'BAD' TO STATUS1                                 05780000
+                  MOVE 'GETPERSONALDATA @ SUBSTR' TO DB2IO-COMMAND      05790000
+                  PERFORM D31100-CHECK-SQLCODE                          05800000
+               END-IF                                                   05810000
+            END-IF                                                      05820000
+                                                                        05830000
+      **** GET THE EMPLOYEE'S NAME ***********************************  05840000
+            IF OK                                                       05850000
+               MOVE 1 TO CHARCOUNT                                      05860000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 05870000
+                       FOR CHARACTERS BEFORE INITIAL "  Resume: "       05880000
+               COMPUTE BEGFIELD = CHARCOUNT + 11                        05890000
+                                                                        05900000
+               MOVE 1 TO CHARCOUNT                                      05910000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 05920000
+                      FOR CHARACTERS                                    05930000
+                      BEFORE INITIAL "    Personal Information   "      05940000
+               MOVE CHARCOUNT TO ENDFIELD                               05950000
+                                                                        05960000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    05970000
+                                      D8EMNAME                          05980000
+            END-IF                                                      05990000
+                                                                        06000000
+            IF OK                                                       06010000
+               MOVE 1 TO CHARCOUNT                                      06020000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 06030000
+               FOR CHARACTERS BEFORE INITIAL "  Address:            "   06040000
+               COMPUTE BEGFIELD = CHARCOUNT + 22                        06050000
+                                                                        06060000
+               MOVE 1 TO CHARCOUNT                                      06070000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 06080000
+                FOR CHARACTERS BEFORE INITIAL "                      "  06090000
+               MOVE CHARCOUNT TO ENDFIELD                               06100000
+                                                                        06110000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    06120000
+                                      D8EMADR1                          06130000
+            END-IF                                                      06140000
+                                                                        06150000
+      ******* GET THE EMPLOYEE'S CITY, STATE, AND ZIPCODE ************  06160000
+            IF OK                                                       06170000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         06180000
+               MOVE 1 TO CHARCOUNT                                      06190000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT FOR CHARACTERS  06200000
+                            BEFORE INITIAL "  Phone:              "     06210000
+               MOVE CHARCOUNT TO ENDFIELD                               06220000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    06230000
+                                    D8EMADR2                            06240000
+            END-IF                                                      06250000
+                                                                        06260000
+      ********* GET THE EMPLOYEE'S TELEPHONE NUMBER ***************     06270000
+            IF OK                                                       06280000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         06290000
+               MOVE 1 TO CHARCOUNT                                      06300000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT FOR CHARACTERS  06310000
+                           BEFORE INITIAL "  Birthdate:          "      06320000
+               MOVE CHARCOUNT TO ENDFIELD                               06330000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    06340000
+                                    D8EMADR3                            06350000
+            END-IF                                                      06360000
+                                                                        06370000
+      ******* GET THE EMPLOYEE'S BIRTH DATE ******************          06380000
+            IF OK                                                       06390000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         06400000
+               MOVE 1 TO CHARCOUNT                                      06410000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT FOR CHARACTERS  06420000
+                               BEFORE INITIAL "  Sex:                "  06430000
+               MOVE CHARCOUNT TO ENDFIELD                               06440000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    06450000
+                                    D8EMBORN                            06460000
+            END-IF                                                      06470000
+                                                                        06480000
+      ******* GET THE EMPLOYEE'S SEX ******************                 06490000
+            IF OK                                                       06500000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         06510000
+               MOVE 1 TO CHARCOUNT                                      06520000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT FOR CHARACTERS  06530000
+                               BEFORE INITIAL "  Marital Status:     "  06540000
+               MOVE CHARCOUNT TO ENDFIELD                               06550000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    06560000
+                                    D8EMSEX                             06570000
+            END-IF                                                      06580000
+                                                                        06590000
+      ******* GET THE EMPLOYEE'S MARITAL STATUS   ****************      06600000
+            IF OK                                                       06610000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         06620000
+               MOVE 1 TO CHARCOUNT                                      06630000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT FOR CHARACTERS  06640000
+                               BEFORE INITIAL "  Height:             "  06650000
+               MOVE CHARCOUNT TO ENDFIELD                               06660000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    06670000
+                                    D8EMPMST                            06680000
+            END-IF                                                      06690000
+                                                                        06700000
+     ******* GET THE EMPLOYEE'S HEIGHT ******************               06710000
+            IF OK                                                       06720000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         06730000
+               MOVE 1 TO CHARCOUNT                                      06740000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT FOR CHARACTERS  06750000
+                               BEFORE INITIAL "  Weight:             "  06760000
+               MOVE CHARCOUNT TO ENDFIELD                               06770000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    06780000
+                                    D8EMHGT                             06790000
+            END-IF                                                      06800000
+                                                                        06810000
+      ******* GET THE EMPLOYEE'S WEIGHT   ****************              06820000
+            IF OK                                                       06830000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         06840000
+               MOVE HVRESUME-DATA(BEGFIELD : ) TO                       06850000
+                                    D8EMWGT                             06860000
+            END-IF.                                                     06870000
+                                                                        06880000
+       D10010-GETDEPARTMENTDATA.                                        06890000
+      ****************************************************************  06900000
+      * Called by the formatEmplResume routine to parse the CLOB     *  06910000
+      * locator data for the employee's department number, manager,  *  06920000
+      * job position,work telephone no., and hire date into ISPF     *  06930000
+      * variables.                                                   *  06940000
+      ****************************************************************  06950000
+                                                                        06960000
+      ****************************************************************  06970000
+      *  Extract the Department Data section from the CLOB locator   *  06980000
+      ****************************************************************  06990000
+            MOVE SPACES TO HVRESUME-DATA.                               07000000
+            MOVE ENDSECTION TO BEGSECTION.                              07010000
+            EXEC SQL SET :ENDSECTION                                    07020000
+                 = POSSTR( :CLRESUME, '    Education   ' )              07030000
+            END-EXEC.                                                   07040000
+            IF SQLCODE NOT = 0                                          07050000
+               MOVE 'BAD' TO STATUS1                                    07060000
+               MOVE 'GETDEPARTMENTDATA @ POSSTR' TO DB2IO-COMMAND       07070000
+               PERFORM D31100-CHECK-SQLCODE                             07080000
+            END-IF                                                      07090000
+                                                                        07100000
+            IF OK                                                       07110000
+               EXEC SQL SET :HVRESUME                                   07120000
+                 = SUBSTR( :CLRESUME, :BEGSECTION,                      07130000
+                               :ENDSECTION - :BEGSECTION )              07140000
+               END-EXEC                                                 07150000
+               IF SQLCODE NOT = 0                                       07160000
+                  MOVE 'BAD' TO STATUS1                                 07170000
+                  MOVE 'GETDEPARTMENTDATA @ SUBSTR' TO DB2IO-COMMAND    07180000
+                  PERFORM D31100-CHECK-SQLCODE                          07190000
+               END-IF                                                   07200000
+            END-IF                                                      07210000
+                                                                        07220000
+      ******GET EMPLOYEE'S DEPARTMENT NUMBER **********************     07230000
+            IF OK                                                       07240000
+               MOVE 1 TO CHARCOUNT                                      07250000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 07260000
+                FOR CHARACTERS BEFORE INITIAL "  Dept Number:        "  07270000
+               COMPUTE BEGFIELD = CHARCOUNT + 22                        07280000
+                                                                        07290000
+               MOVE 1 TO CHARCOUNT                                      07300000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 07310000
+                      FOR CHARACTERS                                    07320000
+                      BEFORE INITIAL "  Manager:            "           07330000
+               MOVE CHARCOUNT TO ENDFIELD                               07340000
+                                                                        07350000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    07360000
+                                      D8EMDEPT                          07370000
+            END-IF                                                      07380000
+                                                                        07390000
+      ******GET EMPLOYEE'S MANAGER'S NAME **********************        07400000
+            IF OK                                                       07410000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         07420000
+                                                                        07430000
+               MOVE 1 TO CHARCOUNT                                      07440000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 07450000
+                      FOR CHARACTERS                                    07460000
+                      BEFORE INITIAL "  Position:           "           07470000
+               MOVE CHARCOUNT TO ENDFIELD                               07480000
+                                                                        07490000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    07500000
+                                      D8MGRNAM                          07510000
+            END-IF                                                      07520000
+                                                                        07530000
+      ******GET THE EMPLOYEE'S JOB POSITION **********************      07540000
+            IF OK                                                       07550000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         07560000
+                                                                        07570000
+               MOVE 1 TO CHARCOUNT                                      07580000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 07590000
+                      FOR CHARACTERS                                    07600000
+                      BEFORE INITIAL "  Phone:              "           07610000
+               MOVE CHARCOUNT TO ENDFIELD                               07620000
+                                                                        07630000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    07640000
+                                      D8EMPOSN                          07650000
+            END-IF                                                      07660000
+                                                                        07670000
+      ******GET THE EMPLOYEE'S WORK TELEPHONE NUMBER***************     07680000
+            IF OK                                                       07690000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         07700000
+                                                                        07710000
+               MOVE 1 TO CHARCOUNT                                      07720000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 07730000
+                      FOR CHARACTERS                                    07740000
+                      BEFORE INITIAL "  Hire Date:          "           07750000
+               MOVE CHARCOUNT TO ENDFIELD                               07760000
+                                                                        07770000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    07780000
+                                      D8EMPHON                          07790000
+            END-IF                                                      07800000
+                                                                        07810000
+      ******GET THE EMPLOYEE'S HIRE DATE ***************************    07820000
+            IF OK                                                       07830000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         07840000
+                                                                        07850000
+               MOVE HVRESUME-DATA(BEGFIELD : ) TO D8EMHIRE              07860000
+            END-IF.                                                     07870000
+                                                                        07880000
+                                                                        07890000
+       D10020-GETEDUCATIONDATA.                                         07900000
+      ***************************************************************   07910000
+      * Called by the formatEmplResume routine to parse the CLOB    *   07920000
+      * locator data for the employee's degree dates, descriptions, *   07930000
+      * and schools into ISPF variables                             *   07940000
+      ***************************************************************   07950000
+                                                                        07960000
+      ****************************************************************  07970000
+      *  Extract the Department Data section from the CLOB locator   *  07980000
+      ****************************************************************  07990000
+            MOVE SPACES TO HVRESUME-DATA.                               08000000
+            MOVE ENDSECTION TO BEGSECTION.                              08010000
+            EXEC SQL SET :ENDSECTION                                    08020000
+                 = POSSTR( :CLRESUME, '    Work History   ' )           08030000
+            END-EXEC.                                                   08040000
+            IF SQLCODE NOT = 0                                          08050000
+               MOVE 'BAD' TO STATUS1                                    08060000
+               MOVE 'GETEDUCATIONDATA @ POSSTR' TO DB2IO-COMMAND        08070000
+               PERFORM D31100-CHECK-SQLCODE                             08080000
+            END-IF                                                      08090000
+                                                                        08100000
+            IF OK                                                       08110000
+               EXEC SQL SET :HVRESUME                                   08120000
+                 = SUBSTR( :CLRESUME, :BEGSECTION,                      08130000
+                               :ENDSECTION - :BEGSECTION )              08140000
+               END-EXEC                                                 08150000
+               IF SQLCODE NOT = 0                                       08160000
+                  MOVE 'BAD' TO STATUS1                                 08170000
+                  MOVE 'GETEDUCATIONDATA @ SUBSTR' TO DB2IO-COMMAND     08180000
+                  PERFORM D31100-CHECK-SQLCODE                          08190000
+               END-IF                                                   08200000
+            END-IF                                                      08210000
+                                                                        08220000
+      *****GET YEAR AND DESCRIPTION OF EMPLOYEE'S MOST RECENT DEGREE**  08230000
+            IF OK                                                       08240000
+               MOVE 1 TO CHARCOUNT                                      08250000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 08260000
+                FOR CHARACTERS BEFORE INITIAL "    Education   "        08270000
+               COMPUTE BEGFIELD = CHARCOUNT + 16                        08280000
+                                                                        08290000
+               MOVE 1 TO CHARCOUNT                                      08300000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 08310000
+                      FOR CHARACTERS                                    08320000
+                      BEFORE INITIAL "                "                 08330000
+               MOVE CHARCOUNT TO ENDFIELD                               08340000
+                                                                        08350000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    08360000
+                                      D8EMEDY1                          08370000
+               COMPUTE BEGFIELD = ENDFIELD + 16                         08380000
+                                                                        08390000
+               MOVE 1 TO CHARCOUNT                                      08400000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 08410000
+                       FOR CHARACTERS                                   08420000
+                       BEFORE INITIAL "                      "          08430000
+               MOVE CHARCOUNT TO ENDFIELD                               08440000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    08450000
+                                      D8EMEDD1                          08460000
+            END-IF                                                      08470000
+                                                                        08480000
+      ***GET INSTITUTION THAT GRANTED EMPLOYEE'S MOST RECENT DEGREE*****08490000
+            IF OK                                                       08500000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         08510000
+                                                                        08520000
+               MOVE 0 TO CHARCOUNT                                      08530000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    08540000
+                      FOR CHARACTERS                                    08550000
+                      BEFORE INITIAL "   "                              08560000
+      *        MOVE CHARCOUNT TO ENDFIELD                               08570000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  08580000
+                                                                        08590000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    08600000
+                                      D8EMEDI1                          08610000
+            END-IF                                                      08620000
+                                                                        08630000
+      *****GET YEAR AND DESCRIPTION OF EMPLOYEE'S PREVIOUS DEGREE**     08640000
+            IF OK                                                       08650000
+               COMPUTE BEGFIELD = ENDFIELD + 3                          08660000
+                                                                        08670000
+               MOVE 0 TO CHARCOUNT                                      08680000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    08690000
+                      FOR CHARACTERS                                    08700000
+                      BEFORE INITIAL "                "                 08710000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  08720000
+                                                                        08730000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    08740000
+                                      D8EMEDY2                          08750000
+               COMPUTE BEGFIELD = ENDFIELD + 16                         08760000
+                                                                        08770000
+               MOVE 0 TO CHARCOUNT                                      08780000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    08790000
+                       FOR CHARACTERS                                   08800000
+                       BEFORE INITIAL "                      "          08810000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  08820000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    08830000
+                                      D8EMEDD2                          08840000
+            END-IF                                                      08850000
+                                                                        08860000
+      ***GET INSTITUTION THAT GRANTED EMPLOYEE'S PREVIOUS DEGREE*****   08870000
+            IF OK                                                       08880000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         08890000
+                                                                        08900000
+               MOVE HVRESUME-DATA(BEGFIELD : ) TO                       08910000
+                                      D8EMEDI2                          08920000
+            END-IF.                                                     08930000
+                                                                        08940000
+       D10030-GETWORKHISTORYDATA.                                       08950000
+      ***************************************************************   08960000
+      * CALLED BY THE FORMATEMPLRESUME ROUTINE TO PARSE THE CLOB    *   08970000
+      * LOCATOR DATA FOR THE EMPLOYEE'S JOB DATES, TITLES, AND      *   08980000
+      * DESCRIPTIONS INTO ISPF VARIABLES                            *   08990000
+      ***************************************************************   09000000
+                                                                        09010000
+      ***************************************************************   09020000
+      * Extract the Work History Data section from the CLOB locator *   09030000
+      ***************************************************************   09040000
+            MOVE SPACES TO HVRESUME-DATA.                               09050000
+            MOVE ENDSECTION TO BEGSECTION.                              09060000
+            EXEC SQL SET :ENDSECTION                                    09070000
+                 = POSSTR( :CLRESUME, '    Interests   ' )              09080000
+            END-EXEC.                                                   09090000
+            IF SQLCODE NOT = 0                                          09100000
+               MOVE 'BAD' TO STATUS1                                    09110000
+               MOVE 'GETWORKHISTORYDATA @ POSSTR' TO DB2IO-COMMAND      09120000
+               PERFORM D31100-CHECK-SQLCODE                             09130000
+            END-IF                                                      09140000
+            IF OK                                                       09150000
+               EXEC SQL SET :HVRESUME                                   09160000
+                 = SUBSTR( :CLRESUME, :BEGSECTION,                      09170000
+                               :ENDSECTION - :BEGSECTION )              09180000
+               END-EXEC                                                 09190000
+               IF SQLCODE NOT = 0                                       09200000
+                  MOVE 'BAD' TO STATUS1                                 09210000
+                  MOVE 'GETWORKHISTORYDATA @ SUBSTR' TO DB2IO-COMMAND   09220000
+                  PERFORM D31100-CHECK-SQLCODE                          09230000
+               END-IF                                                   09240000
+            END-IF                                                      09250000
+      ***************************************************************   09260000
+      * GET DATES AND TITLES OF EMPLOYEE'S MOST RECENT JOB          *   09270000
+      ***************************************************************   09280000
+                                                                        09290000
+            IF OK                                                       09300000
+               MOVE 1 TO CHARCOUNT                                      09310000
+               INSPECT HVRESUME-DATA TALLYING CHARCOUNT                 09320000
+                FOR CHARACTERS BEFORE INITIAL "    Work History   "     09330000
+               COMPUTE BEGFIELD = CHARCOUNT + 19                        09340000
+               MOVE HVRESUME-DATA(BEGFIELD : 15) TO D8EMWHD1            09350000
+               COMPUTE BEGFIELD = BEGFIELD + 20                         09360000
+               MOVE 0 TO CHARCOUNT                                      09370000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    09380000
+                       FOR CHARACTERS                                   09390000
+                       BEFORE INITIAL "                      "          09400000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  09410000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    09420000
+                                      D8EMWHT1                          09430000
+            END-IF                                                      09440000
+                                                                        09450000
+      ***************************************************************   09460000
+      * GET DESCRIPTION OF EMPLOYEE'S MOST RECENT JOB               *   09470000
+      ***************************************************************   09480000
+            IF OK                                                       09490000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         09500000
+               MOVE 0 TO CHARCOUNT                                      09510000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    09520000
+                      FOR CHARACTERS                                    09530000
+                      BEFORE INITIAL ".   "                             09540000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  09550000
+                                                                        09560000
+               IF ENDFIELD - BEGFIELD < 62                              09570000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 09580000
+                                      D8EMWHJ1                          09590000
+               ELSE                                                     09600000
+                  MOVE 0 TO CHARCOUNT                                   09610000
+                  INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT 09620000
+                          FOR CHARACTERS                                09630000
+                          BEFORE INITIAL "                      "       09640000
+                  COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT               09650000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 09660000
+                                      SUB1-D8EMWHJ1                     09670000
+                  COMPUTE BEGFIELD = ENDFIELD + 22                      09680000
+                  MOVE 0 TO CHARCOUNT                                   09690000
+                  INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT 09700000
+                          FOR CHARACTERS                                09710000
+                          BEFORE INITIAL ".   "                         09720000
+                  COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT               09730000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 09740000
+                                      SUB2-D8EMWHJ1                     09750000
+                  STRING SUB1-D8EMWHJ1 SPACE SUB2-D8EMWHJ1              09760000
+                           DELIMITED BY "  " INTO D8EMWHJ1              09770000
+               END-IF                                                   09780000
+            END-IF                                                      09790000
+      *************************************************************     09800000
+      *****GET DATES AND TITLE OF EMPLOYEE'S PREVIOUS JOB**********     09810000
+      *************************************************************     09820000
+            IF OK                                                       09830000
+               COMPUTE BEGFIELD = ENDFIELD + 4                          09840000
+               MOVE HVRESUME-DATA(BEGFIELD : 15) TO                     09850000
+                                      D8EMWHD2                          09860000
+               COMPUTE BEGFIELD = BEGFIELD + 20                         09870000
+               MOVE 0 TO CHARCOUNT                                      09880000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    09890000
+                      FOR CHARACTERS                                    09900000
+                      BEFORE INITIAL "                      "           09910000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  09920000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    09930000
+                                      D8EMWHT2                          09940000
+            END-IF                                                      09950000
+      ***************************************************************   09960000
+      * GET DESCRIPTION OF EMPLOYEE'S PREVIOUS JOB               *      09970000
+      ***************************************************************   09980000
+            IF OK                                                       09990000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         10000000
+               MOVE 0 TO CHARCOUNT                                      10010000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    10020000
+                      FOR CHARACTERS                                    10030000
+                      BEFORE INITIAL ".   "                             10040000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  10050000
+                                                                        10060000
+               IF ENDFIELD - BEGFIELD < 62                              10070000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 10080000
+                                      D8EMWHJ2                          10090000
+               ELSE                                                     10100000
+                  MOVE 0 TO CHARCOUNT                                   10110000
+                  INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT 10120000
+                          FOR CHARACTERS                                10130000
+                          BEFORE INITIAL "                      "       10140000
+                  COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT               10150000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 10160000
+                                     SUB1-D8EMWHJ2                      10170000
+                  COMPUTE BEGFIELD = ENDFIELD + 22                      10180000
+                  MOVE 0 TO CHARCOUNT                                   10190000
+                  INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT 10200000
+                          FOR CHARACTERS                                10210000
+                          BEFORE INITIAL ".   "                         10220000
+                  COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT               10230000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 10240000
+                                  SUB2-D8EMWHJ2                         10250000
+                  STRING SUB1-D8EMWHJ2 SPACE SUB2-D8EMWHJ2              10260000
+                         DELIMITED BY "  " INTO D8EMWHJ2                10270000
+               END-IF                                                   10280000
+                                                                        10290000
+                                                                        10300000
+            END-IF                                                      10310000
+                                                                        10320000
+      *************************************************************     10330000
+      *****GET DATES AND TITLE OF EMPLOYEE'S OTHER PREVIOUS JOB****     10340000
+      *************************************************************     10350000
+            IF OK                                                       10360000
+               COMPUTE BEGFIELD = ENDFIELD + 4                          10370000
+               MOVE HVRESUME-DATA(BEGFIELD : 15) TO                     10380000
+                                      D8EMWHD3                          10390000
+               COMPUTE BEGFIELD = BEGFIELD + 20                         10400000
+               MOVE 0 TO CHARCOUNT                                      10410000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    10420000
+                      FOR CHARACTERS                                    10430000
+                      BEFORE INITIAL "                      "           10440000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  10450000
+               MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO    10460000
+                                      D8EMWHT3                          10470000
+            END-IF                                                      10480000
+      ***************************************************************   10490000
+      * GET DESCRIPTION OF EMPLOYEE'S OTHER PREVIOUS JOB            *   10500000
+      ***************************************************************   10510000
+            IF OK                                                       10520000
+               COMPUTE BEGFIELD = ENDFIELD + 22                         10530000
+               MOVE 0 TO CHARCOUNT                                      10540000
+               INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT    10550000
+                      FOR CHARACTERS                                    10560000
+                      BEFORE INITIAL "."                                10570000
+               COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT                  10580000
+                                                                        10590000
+               IF ENDFIELD - BEGFIELD < 62                              10600000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 10610000
+                                      D8EMWHJ3                          10620000
+               ELSE                                                     10630000
+                  MOVE 0 TO CHARCOUNT                                   10640000
+                  INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT 10650000
+                          FOR CHARACTERS                                10660000
+                          BEFORE INITIAL "                      "       10670000
+                  COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT               10680000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 10690000
+                                     SUB1-D8EMWHJ3                      10700000
+                  COMPUTE BEGFIELD = ENDFIELD + 22                      10710000
+                  MOVE 0 TO CHARCOUNT                                   10720000
+                  INSPECT HVRESUME-DATA(BEGFIELD : ) TALLYING CHARCOUNT 10730000
+                          FOR CHARACTERS                                10740000
+                          BEFORE INITIAL ".   "                         10750000
+                  COMPUTE ENDFIELD = BEGFIELD + CHARCOUNT               10760000
+                  MOVE HVRESUME-DATA(BEGFIELD : ENDFIELD - BEGFIELD) TO 10770000
+                                  SUB2-D8EMWHJ3                         10780000
+                  STRING SUB1-D8EMWHJ3 SPACE SUB2-D8EMWHJ3              10790000
+                         DELIMITED BY "  " INTO D8EMWHJ3                10800000
+               END-IF                                                   10810000
+                                                                        10820000
+                                                                        10830000
+            END-IF.                                                     10840000
+                                                                        10850000
+       D10030-SHOWEMPLRESUME.                                           10860000
+      ***************************************************************   10870000
+      * CALLED BY THE MAIN ROUTINE.  DISPLAYS AN ISPF PANEL THAT IS *   10880000
+      * FORMATTED WITH THE RESUME DATA FOR THE EMPLOYEE SPECIFIED.  *   10890000
+      ***************************************************************   10900000
+            CALL 'ISPLINK' USING VDISPLAY DSN8SSR.                      10910000
+                                                                        10920000
+                                                                        10930000
+       D20000-FREEISPFVARS.                                             10940000
+      ***************************************************************   10950000
+      * CALLED BY THE MAIN ROUTINE.  FREES THE ISPF VARIABLES THAT  *   10960000
+      * WERE ESTABLISHED FOR RUNNING THIS APPLICATION.              *   10970000
+      ***************************************************************   10980000
+            CALL 'ISPLINK' USING VRESET.                                10990000
+                                                                        11000000
+       D31100-CHECK-SQLCODE.                                            11010000
+      ****************************************************************  11020000
+      * Verify that the prior SQL call completed successfully           11030000
+      ****************************************************************  11040000
+            IF SQLCODE NOT = 0 THEN                                     11050000
+               MOVE 'BAD' TO STATUS1.                                   11060000
+               DISPLAY '*    UNEXPECTED SQLCODE FROM DSN8CLRV '         11070000
+                            'DURING ' DB2IO-COMMAND ' REQUEST.'         11080000
+               DISPLAY '*'                                              11090000
+               PERFORM E31110-DETAIL-SQL-ERROR.                         11100000
+                                                                        11110000
+                                                                        11120000
+       E31110-DETAIL-SQL-ERROR.                                         11130000
+      ****************************************************************  11140000
+      * CALL DSNTIAR TO RETURN A TEXT MESSAGE FOR AN UNEXPECTED         11150000
+      * SQLCODE.                                                        11160000
+      ****************************************************************  11170000
+            CALL 'DSNTIAR' USING SQLCA ERROR-MESSAGE ERROR-TEXT-LEN.    11180000
+            IF RETURN-CODE = ZERO                                       11190000
+               PERFORM F31111-PRINT-SQL-ERROR-MSG VARYING ERROR-INDEX   11200000
+                  FROM 1 BY 1 UNTIL ERROR-INDEX GREATER THAN 10.        11210000
+                                                                        11220000
+      *                                           **MESSAGE FORMAT      11230000
+      *                                           **ROUTINE ERROR       11240000
+      *                                           **PRINT ERROR MESSAG  11250000
+                                                                        11260000
+                                                                        11270000
+       F31111-PRINT-SQL-ERROR-MSG.                                      11280000
+      ****************************************************************  11290000
+      * PRINT MESSAGE TEXT                                              11300000
+      ****************************************************************  11310000
+            DISPLAY ERROR-TEXT (ERROR-INDEX).                           11320000

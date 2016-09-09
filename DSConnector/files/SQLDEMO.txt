@@ -1,0 +1,1057 @@
+-- RUN THE FOLLOWING SQL WITH EXSQL OR INDIVIDUALLY EXQA EACH SQL
+-- --------------------------------------------------------------
+-- SAMPLE 1) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+WHERE T.DBNAME=TS.DBNAME
+AND T.TSNAME=TS.NAME
+AND 'DBIQ' IN
+(SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+WHERE   IX.TBCREATOR = T.CREATOR
+AND   IX.TBNAME    = T.NAME
+AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 2) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+  SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+            (SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+            WHERE   IX.TBCREATOR = T.CREATOR
+              AND   IX.TBCREATOR = 'DBIQ'
+              AND   IX.TBNAME    = T.NAME
+              AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 3) JOIN                 PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX SCAN ONLY  (TS)  2/2 COLS
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS,
+              SYSIBM.SYSINDEXES IX
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND IX.TBCREATOR = T.CREATOR
+           AND IX.TBCREATOR = 'DBIQ'
+           AND IX.TBNAME    = T.NAME
+           AND IX.INDEXTYPE = '2'               ;
+--
+-- SAMPLE 4) JOIN (4.1 FORMAT) PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX NESTED JOIN(TS)  2/2 COLS + INDEXONLY
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T INNER JOIN SYSIBM.SYSTABLESPACE TS
+         ON    T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+                                 INNER JOIN SYSIBM.SYSINDEXES IX
+         ON    IX.TBCREATOR = T.CREATOR
+           AND IX.TBNAME    = T.NAME
+
+         WHERE IX.TBCREATOR = 'DBIQ'
+           AND IX.INDEXTYPE = '2'               ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 5) UNION ALL 5 TYPES OF SYSTABLE ENTRY
+-- THE FOLLOWING TWO SQL STATEMENTS DEMONSTRATE THE CASE CLAUSE
+--
+  SELECT 'A', CREATOR, NAME, 'TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='T'
+  UNION ALL
+  SELECT 'B', CREATOR, NAME, 'VIEW'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='V'
+  UNION ALL
+  SELECT 'C', CREATOR, NAME, 'GLOBAL TEMP. TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='G'
+  UNION ALL
+  SELECT 'D', CREATOR, NAME, 'ALIAS'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='A'
+  UNION ALL
+  SELECT 'E', CREATOR, NAME, 'AUXILIARY TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='X'
+  UNION ALL
+  SELECT 'F', CREATOR, NAME, 'MQT'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='M'
+  UNION ALL
+  SELECT 'G', CREATOR, NAME, 'CLONE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='C'
+  UNION ALL
+  SELECT 'H', CREATOR, NAME, 'IMPLICIT TABLE FOR XML'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='P'
+  ORDER BY 1, 2, 3  ;
+
+-- --------------------------------------------------------------
+--
+-- SAMPLE 6)  5 TYPES OF SYSTABLE ENTRY NOW VIA   CASE
+--
+  SELECT CASE TYPE WHEN 'T' THEN 'A'
+                   WHEN 'V' THEN 'B'
+                   WHEN 'G' THEN 'C'
+                   WHEN 'A' THEN 'D'
+                   WHEN 'X' THEN 'E'
+                   WHEN 'M' THEN 'F'
+                   WHEN 'C' THEN 'G'
+                   WHEN 'P' THEN 'H'
+                   ELSE 'Z'
+         END,
+         CREATOR, NAME,
+         CASE TYPE WHEN 'T' THEN 'TABLE'
+                   WHEN 'V' THEN 'VIEW'
+                   WHEN 'G' THEN 'GLOBAL TEMP. TABLE'
+                   WHEN 'A' THEN 'ALIAS'
+                   WHEN 'X' THEN 'AUXILIARY TABLE'
+                   WHEN 'M' THEN 'MQT'
+                   WHEN 'C' THEN 'CLONE'
+                   WHEN 'P' THEN 'IMPLICIT TABLE FOR XML'
+                   ELSE '?'
+         END
+         FROM SYSIBM.SYSTABLES
+  ORDER BY 1, 2, 3  ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 7) REQUEST THAT ALWAYS WORKS
+--
+SELECT IBMREQD FROM SYSIBM.SYSDUMMY1;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 8)  REQUEST WITH THREE LEVELS OF SELECT (test of the structure)
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'DBIQ'
+                AND EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 4
+                )
+           )
+           OR EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'SYSIBM'
+                AND NOT EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 5
+                )
+           );
+-- --------------------------------------------------------------
+--
+-- SAMPLE 9)  REQUEST WHICH USE VIEWS (test of the object used)
+--
+SELECT *                            
+  FROM DSN8810.VASTRDE1 A inner join
+       DSN8810.VPSTRDE1 B           
+    ON A.DEPT1NO = B.PROJ1NO   ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 10)  SYNONYM (INSOFT AUTH)
+--
+SELECT * FROM MYSYN;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 11)  GET ALL DB2 DATA TYPES
+-- ONLY AVAILABLE ON INSOFT SYSTEM
+--
+SELECT * FROM INSOFT.GKSPECIAL;  
+--
+-- SAMPLE 12) OUTER JOIN IS USED
+--
+SELECT
+       P."COLLID",     P."PLNAME",     P."APPLNAME",
+       P."OBJCREATOR", P."OBJNAME",    P."OBJTYPE", P."OBJFLAG",
+       P."OBJCOMMAND", P."OBJ_PRED",
+       P."TDB1TIME",   P."PRECOMPTS",  P."SOURCE_O",
+       F."COLNAME",    F."SQLCOMMAND", F."COL_PRED",
+       F."COL_TYPE",   F."COL_LEN",    F."COL_SCALE",
+       F."O_BY",       F."G_BY"   ,    F."RID",     F."SEQNO",
+       F."CNT_S",      F."CNT_U"  ,
+       F."CNT_I",      F."CNT_P"  ,    F."CNT_OTHER",
+       P."OBJ_EXCHANGE", P."OBJ_TRUNCATE", P."OBJ_MERGE",
+       F."SQL_MERGE",  F."CNT_M"
+       FROM "INSOFTD"."TDB1FUSE" F    RIGHT OUTER JOIN
+            "INSOFTD"."TDB1PUSE" P
+       ON P."TDB1TIME" = F."TDB1TIME"
+       WHERE P."TDB1TIME" < CURRENT TIMESTAMP
+         AND P."SOURCE_O" = 'S'
+         ORDER BY 1, 2, 3, 4, 5, 6  ;
+--
+-- SAMPLE 13) MERGE SCAN IS USED
+--
+DECLARE S420 CURSOR FOR                             
+               WITH VDEP ( DEPTYPE, LEVEL, BCREATOR, BNAME, BTYPE,      
+               DCREATOR, DNAME, DTYPE ) AS                              
+               ( SELECT 'B', 1, ROOT.BCREATOR, ROOT.BNAME, ROOT.BTYPE,  
+               ROOT.DCREATOR, ROOT.DNAME,                               
+               CASE WHEN ROOT.DTYPE = 'T' THEN '1'                      
+               WHEN ROOT.DTYPE = 'M' THEN '2'                           
+               WHEN ROOT.DTYPE = 'V' THEN '3' ELSE ' ' END              
+               FROM SYSIBM.SYSVIEWDEP ROOT                              
+               INNER JOIN INSOFT.TDB1TUSE_MA T                          
+               ON ROOT.BCREATOR = T.CREATOR                             
+               AND ROOT.BNAME = T.NAME                                  
+               AND T.DATATYPE IN ( 40, 60, 90 )                         
+               AND T.STATUS IN ( 'I', 'Y' )                                            
+UNION ALL                                               
+               SELECT 'D', PARENT.LEVEL+1, CHILD.DCREATOR, CHILD.DNAME,
+               CHILD.DTYPE, CHILD.BCREATOR, CHILD.BNAME,               
+               CASE WHEN CHILD.BTYPE = 'T' THEN '1'                    
+               WHEN CHILD.BTYPE = 'M' THEN '2'                         
+               WHEN CHILD.BTYPE = 'V' THEN '3' ELSE ' ' END            
+               FROM VDEP PARENT, SYSIBM.SYSVIEWDEP CHILD               
+               WHERE ( PARENT.DCREATOR = CHILD.DCREATOR                
+               AND PARENT.DNAME = CHILD.DNAME                          
+               OR PARENT.DCREATOR = CHILD.BCREATOR                     
+               AND PARENT.DNAME = CHILD.BNAME )                        
+               AND PARENT.LEVEL < 3 )                                  
+               SELECT DISTINCT DCREATOR, DNAME, DTYPE, BCREATOR,       
+                      BNAME, BTYPE                                     
+               FROM VDEP                                               
+               WHERE DEPTYPE = 'D'                                     
+               ORDER BY BCREATOR, BNAME, DTYPE                         
+               FOR FETCH ONLY                                          
+               WITH UR;
+--
+-- SAMPLE 14) HYBRID JOIN IS USED
+--
+SELECT A.DBID, A.OBID,                         
+                B.DBID, B.OBID                          
+    INTO :ST1-DBID, :ST1-OBID,                          
+         :ST2-DBID, :ST2-OBID                           
+    FROM SYSIBM.SYSTABLES A INNER JOIN                  
+         SYSIBM.SYSTABLESPACE B ON B.DBID = A.COLCOUNT  
+   WHERE A.DBID = B.DBID                                
+     AND A.OBID = B.OBID;
+     
+     
+UPDATE VERTRAG_OBJEKT
+SET VERTRAG_VARIANTE = :H
+WHERE SCHLUESSEL + 0 DAYS = :H
+QUERYNO 5
+
+     
+     -- RUN THE FOLLOWING SQL WITH EXSQL OR INDIVIDUALLY EXQA EACH SQL
+-- --------------------------------------------------------------
+-- SAMPLE 1) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+WHERE T.DBNAME=TS.DBNAME
+AND T.TSNAME=TS.NAME
+AND 'DBIQ' IN
+(SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+WHERE   IX.TBCREATOR = T.CREATOR
+AND   IX.TBNAME    = T.NAME
+AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 2) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+  SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+            (SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+            WHERE   IX.TBCREATOR = T.CREATOR
+              AND   IX.TBCREATOR = 'DBIQ'
+              AND   IX.TBNAME    = T.NAME
+              AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 3) JOIN                 PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX SCAN ONLY  (TS)  2/2 COLS
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS,
+              SYSIBM.SYSINDEXES IX
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND IX.TBCREATOR = T.CREATOR
+           AND IX.TBCREATOR = 'DBIQ'
+           AND IX.TBNAME    = T.NAME
+           AND IX.INDEXTYPE = '2'               ;
+--
+-- SAMPLE 4) JOIN (4.1 FORMAT) PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX NESTED JOIN(TS)  2/2 COLS + INDEXONLY
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T INNER JOIN SYSIBM.SYSTABLESPACE TS
+         ON    T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+                                 INNER JOIN SYSIBM.SYSINDEXES IX
+         ON    IX.TBCREATOR = T.CREATOR
+           AND IX.TBNAME    = T.NAME
+
+         WHERE IX.TBCREATOR = 'DBIQ'
+           AND IX.INDEXTYPE = '2'               ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 5) UNION ALL 5 TYPES OF SYSTABLE ENTRY
+-- THE FOLLOWING TWO SQL STATEMENTS DEMONSTRATE THE CASE CLAUSE
+--
+  SELECT 'A', CREATOR, NAME, 'TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='T'
+  UNION ALL
+  SELECT 'B', CREATOR, NAME, 'VIEW'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='V'
+  UNION ALL
+  SELECT 'C', CREATOR, NAME, 'GLOBAL TEMP. TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='G'
+  UNION ALL
+  SELECT 'D', CREATOR, NAME, 'ALIAS'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='A'
+  UNION ALL
+  SELECT 'E', CREATOR, NAME, 'AUXILIARY TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='X'
+  UNION ALL
+  SELECT 'F', CREATOR, NAME, 'MQT'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='M'
+  UNION ALL
+  SELECT 'G', CREATOR, NAME, 'CLONE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='C'
+  UNION ALL
+  SELECT 'H', CREATOR, NAME, 'IMPLICIT TABLE FOR XML'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='P'
+  ORDER BY 1, 2, 3  ;
+
+-- --------------------------------------------------------------
+--
+-- SAMPLE 6)  5 TYPES OF SYSTABLE ENTRY NOW VIA   CASE
+--
+  SELECT CASE TYPE WHEN 'T' THEN 'A'
+                   WHEN 'V' THEN 'B'
+                   WHEN 'G' THEN 'C'
+                   WHEN 'A' THEN 'D'
+                   WHEN 'X' THEN 'E'
+                   WHEN 'M' THEN 'F'
+                   WHEN 'C' THEN 'G'
+                   WHEN 'P' THEN 'H'
+                   ELSE 'Z'
+         END,
+         CREATOR, NAME,
+         CASE TYPE WHEN 'T' THEN 'TABLE'
+                   WHEN 'V' THEN 'VIEW'
+                   WHEN 'G' THEN 'GLOBAL TEMP. TABLE'
+                   WHEN 'A' THEN 'ALIAS'
+                   WHEN 'X' THEN 'AUXILIARY TABLE'
+                   WHEN 'M' THEN 'MQT'
+                   WHEN 'C' THEN 'CLONE'
+                   WHEN 'P' THEN 'IMPLICIT TABLE FOR XML'
+                   ELSE '?'
+         END
+         FROM SYSIBM.SYSTABLES
+  ORDER BY 1, 2, 3  ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 7) REQUEST THAT ALWAYS WORKS
+--
+SELECT IBMREQD FROM SYSIBM.SYSDUMMY1;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 8)  REQUEST WITH THREE LEVELS OF SELECT (test of the structure)
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'DBIQ'
+                AND EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 4
+                )
+           )
+           OR EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'SYSIBM'
+                AND NOT EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 5
+                )
+           );
+-- --------------------------------------------------------------
+--
+-- SAMPLE 9)  REQUEST WHICH USE VIEWS (test of the object used)
+--
+SELECT *                            
+  FROM DSN8810.VASTRDE1 A inner join
+       DSN8810.VPSTRDE1 B           
+    ON A.DEPT1NO = B.PROJ1NO   ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 10)  SYNONYM (INSOFT AUTH)
+--
+SELECT * FROM MYSYN;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 11)  GET ALL DB2 DATA TYPES
+-- ONLY AVAILABLE ON INSOFT SYSTEM
+--
+SELECT * FROM INSOFT.GKSPECIAL;  
+--
+-- SAMPLE 12) OUTER JOIN IS USED
+--
+SELECT
+       P."COLLID",     P."PLNAME",     P."APPLNAME",
+       P."OBJCREATOR", P."OBJNAME",    P."OBJTYPE", P."OBJFLAG",
+       P."OBJCOMMAND", P."OBJ_PRED",
+       P."TDB1TIME",   P."PRECOMPTS",  P."SOURCE_O",
+       F."COLNAME",    F."SQLCOMMAND", F."COL_PRED",
+       F."COL_TYPE",   F."COL_LEN",    F."COL_SCALE",
+       F."O_BY",       F."G_BY"   ,    F."RID",     F."SEQNO",
+       F."CNT_S",      F."CNT_U"  ,
+       F."CNT_I",      F."CNT_P"  ,    F."CNT_OTHER",
+       P."OBJ_EXCHANGE", P."OBJ_TRUNCATE", P."OBJ_MERGE",
+       F."SQL_MERGE",  F."CNT_M"
+       FROM "INSOFTD"."TDB1FUSE" F    RIGHT OUTER JOIN
+            "INSOFTD"."TDB1PUSE" P
+       ON P."TDB1TIME" = F."TDB1TIME"
+       WHERE P."TDB1TIME" < CURRENT TIMESTAMP
+         AND P."SOURCE_O" = 'S'
+         ORDER BY 1, 2, 3, 4, 5, 6  ;
+--
+-- SAMPLE 13) MERGE SCAN IS USED
+--
+DECLARE S420 CURSOR FOR                             
+               WITH VDEP ( DEPTYPE, LEVEL, BCREATOR, BNAME, BTYPE,      
+               DCREATOR, DNAME, DTYPE ) AS                              
+               ( SELECT 'B', 1, ROOT.BCREATOR, ROOT.BNAME, ROOT.BTYPE,  
+               ROOT.DCREATOR, ROOT.DNAME,                               
+               CASE WHEN ROOT.DTYPE = 'T' THEN '1'                      
+               WHEN ROOT.DTYPE = 'M' THEN '2'                           
+               WHEN ROOT.DTYPE = 'V' THEN '3' ELSE ' ' END              
+               FROM SYSIBM.SYSVIEWDEP ROOT                              
+               INNER JOIN INSOFT.TDB1TUSE_MA T                          
+               ON ROOT.BCREATOR = T.CREATOR                             
+               AND ROOT.BNAME = T.NAME                                  
+               AND T.DATATYPE IN ( 40, 60, 90 )                         
+               AND T.STATUS IN ( 'I', 'Y' )                                            
+UNION ALL                                               
+               SELECT 'D', PARENT.LEVEL+1, CHILD.DCREATOR, CHILD.DNAME,
+               CHILD.DTYPE, CHILD.BCREATOR, CHILD.BNAME,               
+               CASE WHEN CHILD.BTYPE = 'T' THEN '1'                    
+               WHEN CHILD.BTYPE = 'M' THEN '2'                         
+               WHEN CHILD.BTYPE = 'V' THEN '3' ELSE ' ' END            
+               FROM VDEP PARENT, SYSIBM.SYSVIEWDEP CHILD               
+               WHERE ( PARENT.DCREATOR = CHILD.DCREATOR                
+               AND PARENT.DNAME = CHILD.DNAME                          
+               OR PARENT.DCREATOR = CHILD.BCREATOR                     
+               AND PARENT.DNAME = CHILD.BNAME )                        
+               AND PARENT.LEVEL < 3 )                                  
+               SELECT DISTINCT DCREATOR, DNAME, DTYPE, BCREATOR,       
+                      BNAME, BTYPE                                     
+               FROM VDEP                                               
+               WHERE DEPTYPE = 'D'                                     
+               ORDER BY BCREATOR, BNAME, DTYPE                         
+               FOR FETCH ONLY                                          
+               WITH UR;
+--
+-- SAMPLE 14) HYBRID JOIN IS USED
+--
+SELECT A.DBID, A.OBID,                         
+                B.DBID, B.OBID                          
+    INTO :ST1-DBID, :ST1-OBID,                          
+         :ST2-DBID, :ST2-OBID                           
+    FROM SYSIBM.SYSTABLES A INNER JOIN                  
+         SYSIBM.SYSTABLESPACE B ON B.DBID = A.COLCOUNT  
+   WHERE A.DBID = B.DBID                                
+     AND A.OBID = B.OBID;
+     
+     
+UPDATE VERTRAG_OBJEKT
+SET VERTRAG_VARIANTE = :H
+WHERE SCHLUESSEL + 0 DAYS = :H
+QUERYNO 5
+
+     
+     -- RUN THE FOLLOWING SQL WITH EXSQL OR INDIVIDUALLY EXQA EACH SQL
+-- --------------------------------------------------------------
+-- SAMPLE 1) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+WHERE T.DBNAME=TS.DBNAME
+AND T.TSNAME=TS.NAME
+AND 'DBIQ' IN
+(SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+WHERE   IX.TBCREATOR = T.CREATOR
+AND   IX.TBNAME    = T.NAME
+AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 2) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+  SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+            (SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+            WHERE   IX.TBCREATOR = T.CREATOR
+              AND   IX.TBCREATOR = 'DBIQ'
+              AND   IX.TBNAME    = T.NAME
+              AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 3) JOIN                 PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX SCAN ONLY  (TS)  2/2 COLS
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS,
+              SYSIBM.SYSINDEXES IX
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND IX.TBCREATOR = T.CREATOR
+           AND IX.TBCREATOR = 'DBIQ'
+           AND IX.TBNAME    = T.NAME
+           AND IX.INDEXTYPE = '2'               ;
+--
+-- SAMPLE 4) JOIN (4.1 FORMAT) PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX NESTED JOIN(TS)  2/2 COLS + INDEXONLY
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T INNER JOIN SYSIBM.SYSTABLESPACE TS
+         ON    T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+                                 INNER JOIN SYSIBM.SYSINDEXES IX
+         ON    IX.TBCREATOR = T.CREATOR
+           AND IX.TBNAME    = T.NAME
+
+         WHERE IX.TBCREATOR = 'DBIQ'
+           AND IX.INDEXTYPE = '2'               ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 5) UNION ALL 5 TYPES OF SYSTABLE ENTRY
+-- THE FOLLOWING TWO SQL STATEMENTS DEMONSTRATE THE CASE CLAUSE
+--
+  SELECT 'A', CREATOR, NAME, 'TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='T'
+  UNION ALL
+  SELECT 'B', CREATOR, NAME, 'VIEW'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='V'
+  UNION ALL
+  SELECT 'C', CREATOR, NAME, 'GLOBAL TEMP. TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='G'
+  UNION ALL
+  SELECT 'D', CREATOR, NAME, 'ALIAS'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='A'
+  UNION ALL
+  SELECT 'E', CREATOR, NAME, 'AUXILIARY TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='X'
+  UNION ALL
+  SELECT 'F', CREATOR, NAME, 'MQT'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='M'
+  UNION ALL
+  SELECT 'G', CREATOR, NAME, 'CLONE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='C'
+  UNION ALL
+  SELECT 'H', CREATOR, NAME, 'IMPLICIT TABLE FOR XML'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='P'
+  ORDER BY 1, 2, 3  ;
+
+-- --------------------------------------------------------------
+--
+-- SAMPLE 6)  5 TYPES OF SYSTABLE ENTRY NOW VIA   CASE
+--
+  SELECT CASE TYPE WHEN 'T' THEN 'A'
+                   WHEN 'V' THEN 'B'
+                   WHEN 'G' THEN 'C'
+                   WHEN 'A' THEN 'D'
+                   WHEN 'X' THEN 'E'
+                   WHEN 'M' THEN 'F'
+                   WHEN 'C' THEN 'G'
+                   WHEN 'P' THEN 'H'
+                   ELSE 'Z'
+         END,
+         CREATOR, NAME,
+         CASE TYPE WHEN 'T' THEN 'TABLE'
+                   WHEN 'V' THEN 'VIEW'
+                   WHEN 'G' THEN 'GLOBAL TEMP. TABLE'
+                   WHEN 'A' THEN 'ALIAS'
+                   WHEN 'X' THEN 'AUXILIARY TABLE'
+                   WHEN 'M' THEN 'MQT'
+                   WHEN 'C' THEN 'CLONE'
+                   WHEN 'P' THEN 'IMPLICIT TABLE FOR XML'
+                   ELSE '?'
+         END
+         FROM SYSIBM.SYSTABLES
+  ORDER BY 1, 2, 3  ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 7) REQUEST THAT ALWAYS WORKS
+--
+SELECT IBMREQD FROM SYSIBM.SYSDUMMY1;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 8)  REQUEST WITH THREE LEVELS OF SELECT (test of the structure)
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'DBIQ'
+                AND EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 4
+                )
+           )
+           OR EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'SYSIBM'
+                AND NOT EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 5
+                )
+           );
+-- --------------------------------------------------------------
+--
+-- SAMPLE 9)  REQUEST WHICH USE VIEWS (test of the object used)
+--
+SELECT *                            
+  FROM DSN8810.VASTRDE1 A inner join
+       DSN8810.VPSTRDE1 B           
+    ON A.DEPT1NO = B.PROJ1NO   ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 10)  SYNONYM (INSOFT AUTH)
+--
+SELECT * FROM MYSYN;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 11)  GET ALL DB2 DATA TYPES
+-- ONLY AVAILABLE ON INSOFT SYSTEM
+--
+SELECT * FROM INSOFT.GKSPECIAL;  
+--
+-- SAMPLE 12) OUTER JOIN IS USED
+--
+SELECT
+       P."COLLID",     P."PLNAME",     P."APPLNAME",
+       P."OBJCREATOR", P."OBJNAME",    P."OBJTYPE", P."OBJFLAG",
+       P."OBJCOMMAND", P."OBJ_PRED",
+       P."TDB1TIME",   P."PRECOMPTS",  P."SOURCE_O",
+       F."COLNAME",    F."SQLCOMMAND", F."COL_PRED",
+       F."COL_TYPE",   F."COL_LEN",    F."COL_SCALE",
+       F."O_BY",       F."G_BY"   ,    F."RID",     F."SEQNO",
+       F."CNT_S",      F."CNT_U"  ,
+       F."CNT_I",      F."CNT_P"  ,    F."CNT_OTHER",
+       P."OBJ_EXCHANGE", P."OBJ_TRUNCATE", P."OBJ_MERGE",
+       F."SQL_MERGE",  F."CNT_M"
+       FROM "INSOFTD"."TDB1FUSE" F    RIGHT OUTER JOIN
+            "INSOFTD"."TDB1PUSE" P
+       ON P."TDB1TIME" = F."TDB1TIME"
+       WHERE P."TDB1TIME" < CURRENT TIMESTAMP
+         AND P."SOURCE_O" = 'S'
+         ORDER BY 1, 2, 3, 4, 5, 6  ;
+--
+-- SAMPLE 13) MERGE SCAN IS USED
+--
+DECLARE S420 CURSOR FOR                             
+               WITH VDEP ( DEPTYPE, LEVEL, BCREATOR, BNAME, BTYPE,      
+               DCREATOR, DNAME, DTYPE ) AS                              
+               ( SELECT 'B', 1, ROOT.BCREATOR, ROOT.BNAME, ROOT.BTYPE,  
+               ROOT.DCREATOR, ROOT.DNAME,                               
+               CASE WHEN ROOT.DTYPE = 'T' THEN '1'                      
+               WHEN ROOT.DTYPE = 'M' THEN '2'                           
+               WHEN ROOT.DTYPE = 'V' THEN '3' ELSE ' ' END              
+               FROM SYSIBM.SYSVIEWDEP ROOT                              
+               INNER JOIN INSOFT.TDB1TUSE_MA T                          
+               ON ROOT.BCREATOR = T.CREATOR                             
+               AND ROOT.BNAME = T.NAME                                  
+               AND T.DATATYPE IN ( 40, 60, 90 )                         
+               AND T.STATUS IN ( 'I', 'Y' )                                            
+UNION ALL                                               
+               SELECT 'D', PARENT.LEVEL+1, CHILD.DCREATOR, CHILD.DNAME,
+               CHILD.DTYPE, CHILD.BCREATOR, CHILD.BNAME,               
+               CASE WHEN CHILD.BTYPE = 'T' THEN '1'                    
+               WHEN CHILD.BTYPE = 'M' THEN '2'                         
+               WHEN CHILD.BTYPE = 'V' THEN '3' ELSE ' ' END            
+               FROM VDEP PARENT, SYSIBM.SYSVIEWDEP CHILD               
+               WHERE ( PARENT.DCREATOR = CHILD.DCREATOR                
+               AND PARENT.DNAME = CHILD.DNAME                          
+               OR PARENT.DCREATOR = CHILD.BCREATOR                     
+               AND PARENT.DNAME = CHILD.BNAME )                        
+               AND PARENT.LEVEL < 3 )                                  
+               SELECT DISTINCT DCREATOR, DNAME, DTYPE, BCREATOR,       
+                      BNAME, BTYPE                                     
+               FROM VDEP                                               
+               WHERE DEPTYPE = 'D'                                     
+               ORDER BY BCREATOR, BNAME, DTYPE                         
+               FOR FETCH ONLY                                          
+               WITH UR;
+--
+-- SAMPLE 14) HYBRID JOIN IS USED
+--
+SELECT A.DBID, A.OBID,                         
+                B.DBID, B.OBID                          
+    INTO :ST1-DBID, :ST1-OBID,                          
+         :ST2-DBID, :ST2-OBID                           
+    FROM SYSIBM.SYSTABLES A INNER JOIN                  
+         SYSIBM.SYSTABLESPACE B ON B.DBID = A.COLCOUNT  
+   WHERE A.DBID = B.DBID                                
+     AND A.OBID = B.OBID;
+     
+     
+UPDATE VERTRAG_OBJEKT
+SET VERTRAG_VARIANTE = :H
+WHERE SCHLUESSEL + 0 DAYS = :H
+QUERYNO 5
+
+     
+     -- RUN THE FOLLOWING SQL WITH EXSQL OR INDIVIDUALLY EXQA EACH SQL
+-- --------------------------------------------------------------
+-- SAMPLE 1) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+WHERE T.DBNAME=TS.DBNAME
+AND T.TSNAME=TS.NAME
+AND 'DBIQ' IN
+(SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+WHERE   IX.TBCREATOR = T.CREATOR
+AND   IX.TBNAME    = T.NAME
+AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 2) CORRELATED SUBQUERY. PICK UP INSOFT.INDEXES. TYPE=2
+--    1 TS SCAN                (T)
+--    1 INDEX NESTED LOOP-JOIN (TS)  2/2 COLS  INDEXONLY
+--    1 INDEX SCAN             (IX) SCAN PER ROW FOUND WITH 2/4 COLS
+--
+  SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+            (SELECT IX.TBCREATOR FROM SYSIBM.SYSINDEXES IX
+            WHERE   IX.TBCREATOR = T.CREATOR
+              AND   IX.TBCREATOR = 'DBIQ'
+              AND   IX.TBNAME    = T.NAME
+              AND   IX.INDEXTYPE = '2'         )   ;
+--
+-- SAMPLE 3) JOIN                 PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX SCAN ONLY  (TS)  2/2 COLS
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS,
+              SYSIBM.SYSINDEXES IX
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND IX.TBCREATOR = T.CREATOR
+           AND IX.TBCREATOR = 'DBIQ'
+           AND IX.TBNAME    = T.NAME
+           AND IX.INDEXTYPE = '2'               ;
+--
+-- SAMPLE 4) JOIN (4.1 FORMAT) PICK UP INSOFT.INDEXES. TYPE=2
+-- (NOTE DISTINCT NECESSARY BECAUSE WHEN > 1 INDEX DUPLICATE ROWS)
+--    1 INDEX SCAN       (IX)  1/4 COLS + LIST-PREFETCH
+--    1 INDEX HYBRID JOIN (T)  2/2 COLS + LIST-PREFETCH
+--    1 INDEX NESTED JOIN(TS)  2/2 COLS + INDEXONLY
+--
+  SELECT DISTINCT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T INNER JOIN SYSIBM.SYSTABLESPACE TS
+         ON    T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+                                 INNER JOIN SYSIBM.SYSINDEXES IX
+         ON    IX.TBCREATOR = T.CREATOR
+           AND IX.TBNAME    = T.NAME
+
+         WHERE IX.TBCREATOR = 'DBIQ'
+           AND IX.INDEXTYPE = '2'               ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 5) UNION ALL 5 TYPES OF SYSTABLE ENTRY
+-- THE FOLLOWING TWO SQL STATEMENTS DEMONSTRATE THE CASE CLAUSE
+--
+  SELECT 'A', CREATOR, NAME, 'TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='T'
+  UNION ALL
+  SELECT 'B', CREATOR, NAME, 'VIEW'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='V'
+  UNION ALL
+  SELECT 'C', CREATOR, NAME, 'GLOBAL TEMP. TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='G'
+  UNION ALL
+  SELECT 'D', CREATOR, NAME, 'ALIAS'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='A'
+  UNION ALL
+  SELECT 'E', CREATOR, NAME, 'AUXILIARY TABLE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='X'
+  UNION ALL
+  SELECT 'F', CREATOR, NAME, 'MQT'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='M'
+  UNION ALL
+  SELECT 'G', CREATOR, NAME, 'CLONE'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='C'
+  UNION ALL
+  SELECT 'H', CREATOR, NAME, 'IMPLICIT TABLE FOR XML'
+          FROM SYSIBM.SYSTABLES
+          WHERE TYPE='P'
+  ORDER BY 1, 2, 3  ;
+
+-- --------------------------------------------------------------
+--
+-- SAMPLE 6)  5 TYPES OF SYSTABLE ENTRY NOW VIA   CASE
+--
+  SELECT CASE TYPE WHEN 'T' THEN 'A'
+                   WHEN 'V' THEN 'B'
+                   WHEN 'G' THEN 'C'
+                   WHEN 'A' THEN 'D'
+                   WHEN 'X' THEN 'E'
+                   WHEN 'M' THEN 'F'
+                   WHEN 'C' THEN 'G'
+                   WHEN 'P' THEN 'H'
+                   ELSE 'Z'
+         END,
+         CREATOR, NAME,
+         CASE TYPE WHEN 'T' THEN 'TABLE'
+                   WHEN 'V' THEN 'VIEW'
+                   WHEN 'G' THEN 'GLOBAL TEMP. TABLE'
+                   WHEN 'A' THEN 'ALIAS'
+                   WHEN 'X' THEN 'AUXILIARY TABLE'
+                   WHEN 'M' THEN 'MQT'
+                   WHEN 'C' THEN 'CLONE'
+                   WHEN 'P' THEN 'IMPLICIT TABLE FOR XML'
+                   ELSE '?'
+         END
+         FROM SYSIBM.SYSTABLES
+  ORDER BY 1, 2, 3  ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 7) REQUEST THAT ALWAYS WORKS
+--
+SELECT IBMREQD FROM SYSIBM.SYSDUMMY1;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 8)  REQUEST WITH THREE LEVELS OF SELECT (test of the structure)
+--
+SELECT T.CREATOR,T.NAME, TS.DBNAME, TS.NAME
+         FROM SYSIBM.SYSTABLES T, SYSIBM.SYSTABLESPACE TS
+         WHERE T.DBNAME=TS.DBNAME
+           AND T.TSNAME=TS.NAME
+           AND EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'DBIQ'
+                AND EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 4
+                )
+           )
+           OR EXISTS
+           (
+                SELECT IDX.NAME FROM SYSIBM.SYSINDEXES IDX WHERE
+                IDX.TBNAME = T.NAME AND IDX.TBCREATOR = T.CREATOR
+                AND CREATOR = 'SYSIBM'
+                AND NOT EXISTS
+                (
+                    SELECT K12.COLNAME FROM SYSIBM.SYSKEYS K12
+                    WHERE IXNAME = IDX.NAME AND
+                         IXCREATOR = IDX.CREATOR AND
+                         COLNO = 5
+                )
+           );
+-- --------------------------------------------------------------
+--
+-- SAMPLE 9)  REQUEST WHICH USE VIEWS (test of the object used)
+--
+SELECT *                            
+  FROM DSN8810.VASTRDE1 A inner join
+       DSN8810.VPSTRDE1 B           
+    ON A.DEPT1NO = B.PROJ1NO   ;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 10)  SYNONYM (INSOFT AUTH)
+--
+SELECT * FROM MYSYN;
+-- --------------------------------------------------------------
+--
+-- SAMPLE 11)  GET ALL DB2 DATA TYPES
+-- ONLY AVAILABLE ON INSOFT SYSTEM
+--
+SELECT * FROM INSOFT.GKSPECIAL;  
+--
+-- SAMPLE 12) OUTER JOIN IS USED
+--
+SELECT
+       P."COLLID",     P."PLNAME",     P."APPLNAME",
+       P."OBJCREATOR", P."OBJNAME",    P."OBJTYPE", P."OBJFLAG",
+       P."OBJCOMMAND", P."OBJ_PRED",
+       P."TDB1TIME",   P."PRECOMPTS",  P."SOURCE_O",
+       F."COLNAME",    F."SQLCOMMAND", F."COL_PRED",
+       F."COL_TYPE",   F."COL_LEN",    F."COL_SCALE",
+       F."O_BY",       F."G_BY"   ,    F."RID",     F."SEQNO",
+       F."CNT_S",      F."CNT_U"  ,
+       F."CNT_I",      F."CNT_P"  ,    F."CNT_OTHER",
+       P."OBJ_EXCHANGE", P."OBJ_TRUNCATE", P."OBJ_MERGE",
+       F."SQL_MERGE",  F."CNT_M"
+       FROM "INSOFTD"."TDB1FUSE" F    RIGHT OUTER JOIN
+            "INSOFTD"."TDB1PUSE" P
+       ON P."TDB1TIME" = F."TDB1TIME"
+       WHERE P."TDB1TIME" < CURRENT TIMESTAMP
+         AND P."SOURCE_O" = 'S'
+         ORDER BY 1, 2, 3, 4, 5, 6  ;
+--
+-- SAMPLE 13) MERGE SCAN IS USED
+--
+DECLARE S420 CURSOR FOR                             
+               WITH VDEP ( DEPTYPE, LEVEL, BCREATOR, BNAME, BTYPE,      
+               DCREATOR, DNAME, DTYPE ) AS                              
+               ( SELECT 'B', 1, ROOT.BCREATOR, ROOT.BNAME, ROOT.BTYPE,  
+               ROOT.DCREATOR, ROOT.DNAME,                               
+               CASE WHEN ROOT.DTYPE = 'T' THEN '1'                      
+               WHEN ROOT.DTYPE = 'M' THEN '2'                           
+               WHEN ROOT.DTYPE = 'V' THEN '3' ELSE ' ' END              
+               FROM SYSIBM.SYSVIEWDEP ROOT                              
+               INNER JOIN INSOFT.TDB1TUSE_MA T                          
+               ON ROOT.BCREATOR = T.CREATOR                             
+               AND ROOT.BNAME = T.NAME                                  
+               AND T.DATATYPE IN ( 40, 60, 90 )                         
+               AND T.STATUS IN ( 'I', 'Y' )                                            
+UNION ALL                                               
+               SELECT 'D', PARENT.LEVEL+1, CHILD.DCREATOR, CHILD.DNAME,
+               CHILD.DTYPE, CHILD.BCREATOR, CHILD.BNAME,               
+               CASE WHEN CHILD.BTYPE = 'T' THEN '1'                    
+               WHEN CHILD.BTYPE = 'M' THEN '2'                         
+               WHEN CHILD.BTYPE = 'V' THEN '3' ELSE ' ' END            
+               FROM VDEP PARENT, SYSIBM.SYSVIEWDEP CHILD               
+               WHERE ( PARENT.DCREATOR = CHILD.DCREATOR                
+               AND PARENT.DNAME = CHILD.DNAME                          
+               OR PARENT.DCREATOR = CHILD.BCREATOR                     
+               AND PARENT.DNAME = CHILD.BNAME )                        
+               AND PARENT.LEVEL < 3 )                                  
+               SELECT DISTINCT DCREATOR, DNAME, DTYPE, BCREATOR,       
+                      BNAME, BTYPE                                     
+               FROM VDEP                                               
+               WHERE DEPTYPE = 'D'                                     
+               ORDER BY BCREATOR, BNAME, DTYPE                         
+               FOR FETCH ONLY                                          
+               WITH UR;
+--
+-- SAMPLE 14) HYBRID JOIN IS USED
+--
+SELECT A.DBID, A.OBID,                         
+                B.DBID, B.OBID                          
+    INTO :ST1-DBID, :ST1-OBID,                          
+         :ST2-DBID, :ST2-OBID                           
+    FROM SYSIBM.SYSTABLES A INNER JOIN                  
+         SYSIBM.SYSTABLESPACE B ON B.DBID = A.COLCOUNT  
+   WHERE A.DBID = B.DBID                                
+     AND A.OBID = B.OBID;
+     
+     
+UPDATE VERTRAG_OBJEKT
+SET VERTRAG_VARIANTE = :H
+WHERE SCHLUESSEL + 0 DAYS = :H
+QUERYNO 5
+
+     
+     
